@@ -1,0 +1,11 @@
+[package]
+name = "prism"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+daisy = { version = "0.10.0", features = ["seed_1_2"] }
+cortex-m = "0.7"
+cortex-m-rt = { version = "0.7", features = [ "device" ] }
+stm32h7xx-hal = { version = "0.16", features = [ "stm32h750v", "rt", "revision_v", "usb_hs", "xspi", "fmc", "sdmmc" ] }
+panic-itm = "0.4.2"
