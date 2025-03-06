@@ -3,7 +3,15 @@
 
 use cortex_m_rt::entry;
 
-pub use panic_itm;
+pub use panic_semihosting;
+
+use defmt_rtt as _;
+use defmt::debug;
+
+
+fn test(x: u32) {
+    debug!("inside test: {}", x);
+}
 
 #[entry]
 fn main() -> ! {
@@ -21,5 +29,7 @@ fn main() -> ! {
     loop {
         led_user.toggle();
         cortex_m::asm::delay(one_second);
+
+        test(one_second);
     }
 }
