@@ -155,9 +155,9 @@ mod app {
         let mut volume_mgr = VolumeManager::new(block_device, TimeSource);
         let mut volume0 = volume_mgr.get_volume(VolumeIdx(0)).unwrap();
         let root_dir = volume_mgr.open_root_dir(&volume0).unwrap();
-        volume_mgr.iterate_dir(&volume0, &root_dir, |entry| {
-            debug!("file: {} ({} bytes)", core::str::from_utf8(entry.name.base_name()).unwrap(), entry.size);
-        }).unwrap();
+        // volume_mgr.iterate_dir(&volume0, &root_dir, |entry| {
+        //     debug!("file: {} ({} bytes)", core::str::from_utf8(entry.name.base_name()).unwrap(), entry.size);
+        // }).unwrap();
 
         const HEADER_LEN: usize = 44;
         const DATA_LEN: usize = 2 * 256 * 8 * 8;
@@ -166,12 +166,10 @@ mod app {
             let mut file = volume_mgr.open_file_in_dir(&mut volume0, &root_dir, filename, Mode::ReadOnly).unwrap();
             file.seek_from_start(0).unwrap();
             let mut buffer = [0u8; HEADER_LEN + DATA_LEN];
-            let total = volume_mgr
+            volume_mgr
                 .read(&volume0, &mut file, &mut buffer)
                 .unwrap();
 
-            debug!("first 4 bytes of data buffer: {}", buffer[HEADER_LEN..HEADER_LEN+4]);
-            debug!("copying {} bytes into {}", total - HEADER_LEN, shift..shift+(DATA_LEN/2)); 
             raw_memory[shift..shift+(DATA_LEN/2)].copy_from_slice(
                 bytemuck::cast_slice(&buffer[HEADER_LEN..HEADER_LEN+DATA_LEN])
             );
@@ -181,10 +179,13 @@ mod app {
         }
 
         debug!("First 256 elements of raw memory: {}", raw_memory[0..256]);
-
+        let mut test: [f32; 256] = [0.0; 256];
+        for i in 0..256 {
+            test[i] = raw_memory[i] as f32 / 32767 as f32;
+            debug!("test[{}] = {}", i, test[i]);
+        }
 
         debug!("Finished init.");
-
         (
             Shared {},
             Local {
@@ -204,7 +205,7 @@ mod app {
 
         let mut buffer = [0.0; BLOCK_LENGTH];
         for i in 0..BLOCK_LENGTH {
-            buffer[i] = raw_memory[*frame_counter+i] as f32;
+            buffer[i] = raw_memory[*frame_counter+i] as f32 / 32767 as f32;
         }
         *frame_counter = (*frame_counter + BLOCK_LENGTH) % *cx.local.frame_max;
 
