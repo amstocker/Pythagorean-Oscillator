@@ -155,9 +155,6 @@ mod app {
         let mut volume_mgr = VolumeManager::new(block_device, TimeSource);
         let mut volume0 = volume_mgr.get_volume(VolumeIdx(0)).unwrap();
         let root_dir = volume_mgr.open_root_dir(&volume0).unwrap();
-        // volume_mgr.iterate_dir(&volume0, &root_dir, |entry| {
-        //     debug!("file: {} ({} bytes)", core::str::from_utf8(entry.name.base_name()).unwrap(), entry.size);
-        // }).unwrap();
 
         const HEADER_LEN: usize = 44;
         const DATA_LEN: usize = 2 * 256 * 8 * 8;
@@ -178,13 +175,6 @@ mod app {
             volume_mgr.close_file(&volume0, file).unwrap();
         }
 
-        debug!("First 256 elements of raw memory: {}", raw_memory[0..256]);
-        let mut test: [f32; 256] = [0.0; 256];
-        for i in 0..256 {
-            test[i] = raw_memory[i] as f32 / 32767 as f32;
-            debug!("test[{}] = {}", i, test[i]);
-        }
-
         debug!("Finished init.");
         (
             Shared {},
@@ -192,7 +182,7 @@ mod app {
                 audio_interface,
                 raw_memory,
                 frame_counter: 0,
-                frame_max: 256
+                frame_max: shift
             }
         )
     }
