@@ -23,6 +23,26 @@ impl embedded_sdmmc::TimeSource for TimeSource {
 }
 
 
+const WAV_FILENAMES: [&str; 16] = [
+    "0-0-0-0.wav",
+    "1-0-0-0.wav",
+    "0-1-0-0.wav",
+    "1-1-0-0.wav",
+    "0-0-1-0.wav",
+    "1-0-1-0.wav",
+    "0-1-1-0.wav",
+    "1-1-1-0.wav",
+    "0-0-0-1.wav",
+    "1-0-0-1.wav",
+    "0-1-0-1.wav",
+    "1-1-0-1.wav",
+    "0-0-1-1.wav",
+    "1-0-1-1.wav",
+    "0-1-1-1.wav",
+    "1-1-1-1.wav"
+];
+
+
 
 #[rtic::app(device = stm32h7xx_hal::pac, peripherals = true)]
 mod app {
@@ -35,7 +55,7 @@ mod app {
     use daisy::audio::Interface;
     use defmt::debug;
 
-    use crate::TimeSource;
+    use crate::{WAV_FILENAMES, TimeSource};
 
 
     #[shared]
@@ -69,7 +89,7 @@ mod app {
 
         let sdram = daisy::board_split_sdram!(cp, dp, ccdr, pins);
 
-        let raw_waveforms = unsafe {
+        let raw_memory = unsafe {
             let ram_items = sdram.size() / core::mem::size_of::<u16>();
             let ram_ptr = sdram.base_address as *mut u16;
             core::slice::from_raw_parts_mut(ram_ptr, ram_items)
@@ -136,28 +156,26 @@ mod app {
             debug!("file: {} ({} bytes)", core::str::from_utf8(entry.name.base_name()).unwrap(), entry.size);
         }).unwrap();
 
-        let filename = "hello.txt";
-        let mut file = volume_mgr.open_file_in_dir(&mut volume0, &root_dir, filename, Mode::ReadOnly).unwrap();
-
-        file.seek_from_start(0).unwrap();
-        while !file.eof() {
-            let mut buffer = [0u8; 64];
-            let n = volume_mgr
+        const HEADER_LEN: usize = 44;
+        const DATA_LEN: usize = 2 * 256 * 8 * 8;
+        let mut shift = 0;
+        for filename in WAV_FILENAMES {
+            let mut file = volume_mgr.open_file_in_dir(&mut volume0, &root_dir, filename, Mode::ReadOnly).unwrap();
+            file.seek_from_start(0).unwrap();
+            let mut buffer = [0u8; HEADER_LEN + DATA_LEN];
+            let total = volume_mgr
                 .read(&volume0, &mut file, &mut buffer)
                 .unwrap();
-            debug!("hello.txt contents ({} bytes): {}", n, core::str::from_utf8(&buffer[0..n]).unwrap());
+
+            debug!("copying {} bytes into {}", total - HEADER_LEN, shift..shift+(DATA_LEN/2)); 
+            raw_memory[shift..shift+(DATA_LEN/2)].copy_from_slice(
+                bytemuck::cast_slice(&buffer[HEADER_LEN..HEADER_LEN+DATA_LEN])
+            );
+            shift += DATA_LEN / 2;
+
+            volume_mgr.close_file(&volume0, file).unwrap();
         }
 
-
-        // Test the SDRAM memory by writing to it and reading back.
-        debug!("Writting into RAM");
-        raw_waveforms[0] = 1u16;
-        raw_waveforms[3] = 2;
-        raw_waveforms[raw_waveforms.len() - 1] = 3;
-        assert_eq!(raw_waveforms[0], 1);
-        assert_eq!(raw_waveforms[3], 2);
-        assert_eq!(raw_waveforms[raw_waveforms.len() - 1], 3);
-        debug!("All went as expected");
 
         debug!("Finished init.");
 
