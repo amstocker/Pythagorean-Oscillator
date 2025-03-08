@@ -52,7 +52,7 @@ mod app {
         sdmmc::{SdCard, Sdmmc},
     };
     use embedded_sdmmc::{VolumeIdx, VolumeManager, Mode};
-    use daisy::audio::Interface;
+    use daisy::audio::{Interface, BLOCK_LENGTH};
     use defmt::debug;
 
     use crate::{WAV_FILENAMES, TimeSource};
@@ -64,6 +64,9 @@ mod app {
     #[local]
     struct Local {
         audio_interface: Interface,
+        raw_memory: &'static [i16],
+        frame_counter: usize,
+        frame_max: usize
     }
 
     #[init]
@@ -90,8 +93,8 @@ mod app {
         let sdram = daisy::board_split_sdram!(cp, dp, ccdr, pins);
 
         let raw_memory = unsafe {
-            let ram_items = sdram.size() / core::mem::size_of::<u16>();
-            let ram_ptr = sdram.base_address as *mut u16;
+            let ram_items = sdram.size() / core::mem::size_of::<i16>();
+            let ram_ptr = sdram.base_address as *mut i16;
             core::slice::from_raw_parts_mut(ram_ptr, ram_items)
         };
 
@@ -167,6 +170,7 @@ mod app {
                 .read(&volume0, &mut file, &mut buffer)
                 .unwrap();
 
+            debug!("first 4 bytes of data buffer: {}", buffer[HEADER_LEN..HEADER_LEN+4]);
             debug!("copying {} bytes into {}", total - HEADER_LEN, shift..shift+(DATA_LEN/2)); 
             raw_memory[shift..shift+(DATA_LEN/2)].copy_from_slice(
                 bytemuck::cast_slice(&buffer[HEADER_LEN..HEADER_LEN+DATA_LEN])
@@ -176,26 +180,38 @@ mod app {
             volume_mgr.close_file(&volume0, file).unwrap();
         }
 
+        debug!("First 256 elements of raw memory: {}", raw_memory[0..256]);
+
 
         debug!("Finished init.");
 
         (
             Shared {},
             Local {
-                audio_interface
+                audio_interface,
+                raw_memory,
+                frame_counter: 0,
+                frame_max: 256
             }
         )
     }
 
-    #[task(binds = DMA1_STR1, local = [audio_interface])]
+    #[task(binds = DMA1_STR1, local = [audio_interface, raw_memory, frame_counter, frame_max])]
     fn dsp(cx: dsp::Context) {
         let audio_interface = cx.local.audio_interface;
+        let raw_memory = cx.local.raw_memory;
+        let frame_counter = cx.local.frame_counter;
+
+        let mut buffer = [0.0; BLOCK_LENGTH];
+        for i in 0..BLOCK_LENGTH {
+            buffer[i] = raw_memory[*frame_counter+i] as f32;
+        }
+        *frame_counter = (*frame_counter + BLOCK_LENGTH) % *cx.local.frame_max;
 
         audio_interface
             .handle_interrupt_dma1_str1(|audio_buffer| {
-                for frame in audio_buffer {
-                    let (left, right) = *frame;
-                    *frame = (right * 0.8, left * 0.8);
+                for (frame, sample) in audio_buffer.iter_mut().zip(buffer.into_iter()) {
+                    *frame = (0.5 * sample, 0.5 * sample);
                 }
             })
             .unwrap();
