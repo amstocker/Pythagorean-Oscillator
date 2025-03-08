@@ -1,5 +1,5 @@
 [package]
-name = "prism"
+name = "prism-firmware"
 version = "0.1.0"
 edition = "2024"
 
@@ -8,7 +8,46 @@ daisy = { version = "0.10.0", features = ["seed_1_2"] }
 cortex-m = { version = "0.7", features = ["critical-section-single-core"]}
 cortex-m-rt = { version = "0.7", features = [ "device" ] }
 stm32h7xx-hal = { version = "0.16", features = [ "stm32h750v", "rt", "revision_v", "usb_hs", "xspi", "fmc", "sdmmc" ] }
-panic-probe = "0.3"
-panic-semihosting = "0.6"
+panic-probe = { version = "0.3", features = ["print-defmt"] }
+rtic = { version = "2.0.0", features = [ "thumbv7-backend" ] }
 defmt = "0.3"
 defmt-rtt = "0.4"
+
+
+# cargo build/run
+[profile.dev]
+codegen-units = 1
+debug = 2
+debug-assertions = true # <-
+incremental = false
+opt-level = "s" # <-
+overflow-checks = true # <-
+
+# cargo test
+[profile.test]
+codegen-units = 1
+debug = 2
+debug-assertions = true # <-
+incremental = false
+opt-level = "s" # <-
+overflow-checks = true # <-
+
+# cargo build/run --release
+[profile.release]
+codegen-units = 1
+debug = 2
+debug-assertions = false # <-
+incremental = false
+lto = 'fat'
+opt-level = "s" # <-
+overflow-checks = false # <-
+
+# cargo test --release
+[profile.bench]
+codegen-units = 1
+debug = 2
+debug-assertions = false # <-
+incremental = false
+lto = 'fat'
+opt-level = "s" # <-
+overflow-checks = false # <-
