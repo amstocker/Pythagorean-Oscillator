@@ -7,12 +7,12 @@ edition = "2024"
 daisy = { version = "0.10.0", features = ["seed_1_2"] }
 cortex-m = { version = "0.7", features = ["critical-section-single-core"]}
 cortex-m-rt = { version = "0.7", features = [ "device" ] }
-stm32h7xx-hal = { version = "0.16", features = [ "stm32h750v", "rt", "revision_v", "usb_hs", "xspi", "fmc", "sdmmc", "sdmmc-fatfs" ] }
+embedded-sdmmc = { version = "0.5" }
+stm32h7xx-hal = { version = "0.16", features = [ "stm32h750v", "rt", "revision_v", "usb_hs", "xspi", "fmc", "defmt", "sdmmc", "sdmmc-fatfs" ] }
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 rtic = { version = "2.0.0", features = [ "thumbv7-backend" ] }
 defmt = "0.3"
 defmt-rtt = "0.4"
-embedded-sdmmc = "0.5"
 
 
 # cargo build/run

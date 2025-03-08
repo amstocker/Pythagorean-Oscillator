@@ -31,7 +31,7 @@ mod app {
         gpio::Speed,
         sdmmc::{SdCard, Sdmmc},
     };
-    use embedded_sdmmc::{sdcard, Mode, SdCard as SD, VolumeIdx, VolumeManager};
+    use embedded_sdmmc::{VolumeIdx, VolumeManager, Mode};
     use daisy::audio::Interface;
     use defmt::debug;
 
@@ -122,11 +122,23 @@ mod app {
 
         let block_device = sdmmc.sdmmc_block_device();
         let mut volume_mgr = VolumeManager::new(block_device, TimeSource);
-        let volume0 = volume_mgr.get_volume(VolumeIdx(0)).unwrap();
+        let mut volume0 = volume_mgr.get_volume(VolumeIdx(0)).unwrap();
         let root_dir = volume_mgr.open_root_dir(&volume0).unwrap();
         volume_mgr.iterate_dir(&volume0, &root_dir, |entry| {
-            debug!("files: {}", entry.size);
+            debug!("file: {} ({} bytes)", core::str::from_utf8(entry.name.base_name()).unwrap(), entry.size);
         }).unwrap();
+
+        let filename = "hello.txt";
+        let mut file = volume_mgr.open_file_in_dir(&mut volume0, &root_dir, filename, Mode::ReadOnly).unwrap();
+
+        file.seek_from_start(0).unwrap();
+        while !file.eof() {
+            let mut buffer = [0u8; 64];
+            let n = volume_mgr
+                .read(&volume0, &mut file, &mut buffer)
+                .unwrap();
+            debug!("hello.txt contents ({} bytes): {}", n, core::str::from_utf8(&buffer[0..n]).unwrap());
+        }
 
         debug!("Finished init.");
 
