@@ -67,6 +67,14 @@ mod app {
         let audio_interface = daisy::board_split_audio!(ccdr, pins);
         let audio_interface = audio_interface.spawn().unwrap();
 
+        let sdram = daisy::board_split_sdram!(cp, dp, ccdr, pins);
+
+        let raw_waveforms = unsafe {
+            let ram_items = sdram.size() / core::mem::size_of::<u16>();
+            let ram_ptr = sdram.base_address as *mut u16;
+            core::slice::from_raw_parts_mut(ram_ptr, ram_items)
+        };
+
 
         // SD Card
         let (clk, cmd, d0, d1, d2, d3) = (
@@ -139,6 +147,17 @@ mod app {
                 .unwrap();
             debug!("hello.txt contents ({} bytes): {}", n, core::str::from_utf8(&buffer[0..n]).unwrap());
         }
+
+
+        // Test the SDRAM memory by writing to it and reading back.
+        debug!("Writting into RAM");
+        raw_waveforms[0] = 1u16;
+        raw_waveforms[3] = 2;
+        raw_waveforms[raw_waveforms.len() - 1] = 3;
+        assert_eq!(raw_waveforms[0], 1);
+        assert_eq!(raw_waveforms[3], 2);
+        assert_eq!(raw_waveforms[raw_waveforms.len() - 1], 3);
+        debug!("All went as expected");
 
         debug!("Finished init.");
 
