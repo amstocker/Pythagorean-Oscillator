@@ -4,16 +4,39 @@
 use prism_firmware as _; // global logger + panicking-behavior + memory layout
 
 
+
+// This is just a placeholder TimeSource. In a real world application
+// one would probably use the RTC to provide time.
+pub struct TimeSource;
+
+impl embedded_sdmmc::TimeSource for TimeSource {
+    fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
+        embedded_sdmmc::Timestamp {
+            year_since_1970: 0,
+            zero_indexed_month: 0,
+            zero_indexed_day: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        }
+    }
+}
+
+
+
 #[rtic::app(device = stm32h7xx_hal::pac, peripherals = true)]
 mod app {
-    //use embedded_sdmmc::{SdCard, VolumeManager, Mode, VolumeIdx};
     use stm32h7xx_hal::{
         prelude::*,
-        pac,
         gpio::Speed,
         sdmmc::{SdCard, Sdmmc},
     };
+    use embedded_sdmmc::{sdcard, Mode, SdCard as SD, VolumeIdx, VolumeManager};
     use daisy::audio::Interface;
+    use defmt::debug;
+
+    use crate::TimeSource;
+
 
     #[shared]
     struct Shared {}
@@ -97,23 +120,15 @@ mod app {
             cortex_m::asm::delay(one_second / 8);
         }
 
-        let mut buffer = [0x34; 512];
-        defmt::debug!("Writting to the card");
-        sdmmc.write_block(0, &buffer).unwrap();
-        defmt::debug!("Reading from the card");
-        sdmmc.read_block(0, &mut buffer).unwrap();
-        for byte in buffer.iter() {
-            assert_eq!(*byte, 0x34);
-        }
-        defmt::debug!("All went as expected");
+        let block_device = sdmmc.sdmmc_block_device();
+        let mut volume_mgr = VolumeManager::new(block_device, TimeSource);
+        let volume0 = volume_mgr.get_volume(VolumeIdx(0)).unwrap();
+        let root_dir = volume_mgr.open_root_dir(&volume0).unwrap();
+        volume_mgr.iterate_dir(&volume0, &root_dir, |entry| {
+            debug!("files: {}", entry.size);
+        }).unwrap();
 
-        // Keep blinking to block main and shows signs of life and to show that
-        // the test above passed.
-        let one_second = ccdr.clocks.sys_ck().to_Hz();
-        loop {
-            led_user.toggle();
-            cortex_m::asm::delay(one_second);
-        }
+        debug!("Finished init.");
 
         (
             Shared {},

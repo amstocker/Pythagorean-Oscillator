@@ -50,7 +50,7 @@ dependencies = [
  "bare-metal 0.2.5",
  "bitfield",
  "critical-section",
- "embedded-hal 0.2.7",
+ "embedded-hal",
  "volatile-register",
 ]
 
@@ -154,20 +154,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "embedded-hal"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "361a90feb7004eca4019fb28352a9465666b24f840f5c3cddf0ff13920590b89"
-
-[[package]]
 name = "embedded-sdmmc"
-version = "0.8.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb637331040ec9b35f6a8151904d1aca914cc349d14c91b9a3e92ba789b22f3f"
+checksum = "2f4d14180a76a8af24a45a0e1a4f9c97491b05a3b962d59d5e4ce0e6ab103736"
 dependencies = [
  "byteorder",
- "embedded-hal 1.0.0",
- "heapless",
+ "embedded-hal",
  "log",
 ]
 
@@ -406,7 +399,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7f0639399e2307c2446c54d91d4f1596343a1e1d5cab605b9cce11d0ab3858c"
 dependencies = [
- "embedded-hal 0.2.7",
+ "embedded-hal",
 ]
 
 [[package]]
@@ -431,7 +424,8 @@ dependencies = [
  "cast",
  "cortex-m",
  "embedded-dma",
- "embedded-hal 0.2.7",
+ "embedded-hal",
+ "embedded-sdmmc",
  "embedded-storage",
  "fugit",
  "nb 1.1.0",
@@ -461,7 +455,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e948d523b316939545d8b21a48c27aef150ce25321b9f95ff7978647a806a6fe"
 dependencies = [
  "cortex-m",
- "embedded-hal 0.2.7",
+ "embedded-hal",
  "usb-device",
  "vcell",
 ]
