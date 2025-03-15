@@ -3,15 +3,24 @@ use defmt::debug;
 use crate::dsp::{CycleDetector, LowPassFilter, Processor, ZeroDetector};
 
 
+// keep track of last M cycles, but need to make sure they are popped after
+// being overwritten?
+const CYCLE_HISTORY: usize = 16;
+
+
 // NOTE: this range includes the index
 // at the end _after_ the start of a new cycle
-#[derive(Default)]
-pub struct Cycle {
+#[derive(Default, Clone, Copy)]
+pub struct Cycle<const N: usize> {
     start: usize,
     end: usize
 }
 
-impl Cycle {
+impl<const N: usize> Cycle<N> {
+    pub fn length(&self) -> usize {
+        (self.end + N - self.start) % N
+    }
+
     pub fn is_degenerate(&self) -> bool {
         self.start == self.end
     }
@@ -24,7 +33,8 @@ pub struct CycleTracker<const N: usize> {
     cycle_detector: CycleDetector,
     zero_detector: ZeroDetector,
     last_zero: usize,
-    current_cycle: Cycle
+    last_cycle: Cycle<N>
+    // count frames since end of last cycle?
 }
 
 impl<const N: usize> CycleTracker<N> {
@@ -36,26 +46,26 @@ impl<const N: usize> CycleTracker<N> {
             cycle_detector: CycleDetector::new(),
             zero_detector: ZeroDetector::new(),
             last_zero: 0,
-            current_cycle: Cycle::default()
+            last_cycle: Cycle::default()
         }
     }
 }
 
-impl<const N: usize> Processor<()> for CycleTracker<N> {
-    fn process(&mut self, sample: crate::dsp::Sample) -> () {
+impl<const N: usize> Processor<Cycle<N>> for CycleTracker<N> {
+    fn process(&mut self, sample: crate::dsp::Sample) -> Cycle<N> {
         self.buffer[self.index] = sample;
         let lpf_value = self.lpf.process(sample);
         
         let cycle_info = self.cycle_detector.process(lpf_value);
         if cycle_info.start {
-            self.current_cycle = Cycle {
-                start: self.current_cycle.end,
+            self.last_cycle = Cycle {
+                start: self.last_cycle.end,
                 end: self.last_zero
             };
             debug!("({}, {}) length = {}",
-                self.current_cycle.start,
-                self.current_cycle.end,
-                (self.current_cycle.end + N - self.current_cycle.start) % N
+                self.last_cycle.start,
+                self.last_cycle.end,
+                (self.last_cycle.end + N - self.last_cycle.start) % N
             );
         }
         
@@ -64,5 +74,6 @@ impl<const N: usize> Processor<()> for CycleTracker<N> {
         }
 
         self.index = (self.index + 1) % N;
+        self.last_cycle
     }
 }

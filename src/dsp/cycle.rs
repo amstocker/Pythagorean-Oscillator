@@ -45,7 +45,7 @@ impl From<Gate> for Sample {
 }
 
 
-pub struct CycleInfo {
+pub struct CycleDetectInfo {
     pub length: u32,
     pub start: bool
 }
@@ -80,8 +80,8 @@ impl CycleDetector {
     }
 }
 
-impl Processor<CycleInfo> for CycleDetector {
-    fn process(&mut self, sample: Sample) -> CycleInfo {
+impl Processor<CycleDetectInfo> for CycleDetector {
+    fn process(&mut self, sample: Sample) -> CycleDetectInfo {
         let high_env_value = self.high_env.process(sample.max(0.0));
         let low_env_value = self.low_env.process(sample.min(0.0));
 
@@ -114,7 +114,7 @@ impl Processor<CycleInfo> for CycleDetector {
         };
 
         self.sample_counter += 1;
-        CycleInfo {
+        CycleDetectInfo {
             length: self.cycle_length,
             start
         }
