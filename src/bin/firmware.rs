@@ -10,8 +10,6 @@ mod app {
     use defmt::debug;
 
     use prism_firmware::{dsp::Processor, engine::CycleTracker};
-    
-
 
     #[shared]
     struct Shared {}

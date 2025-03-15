@@ -11,6 +11,7 @@ use stm32h7xx_hal as _; // memory layout
 pub mod config;
 pub mod dsp;
 pub mod engine;
+pub mod memory;
 
 
 // same panicking *behavior* as `panic-probe` but doesn't print a panic message

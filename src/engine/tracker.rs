@@ -1,5 +1,4 @@
-use defmt::debug;
-
+use crate::memory;
 use crate::dsp::{CycleDetector, LowPassFilter, Processor, ZeroDetector};
 
 
@@ -27,7 +26,7 @@ impl<const N: usize> Cycle<N> {
 }
 
 pub struct CycleTracker<const N: usize> {
-    buffer: [f32; N],
+    buffer: &'static mut [f32],
     index: usize,
     lpf: LowPassFilter,
     cycle_detector: CycleDetector,
@@ -40,7 +39,7 @@ pub struct CycleTracker<const N: usize> {
 impl<const N: usize> CycleTracker<N> {
     pub fn new() -> Self {
         CycleTracker {
-            buffer: [0.0; N],
+            buffer: memory::allocate_buffer(N).unwrap(),
             index: 0,
             lpf: LowPassFilter::new(0.01),
             cycle_detector: CycleDetector::new(),
@@ -62,11 +61,6 @@ impl<const N: usize> Processor<Cycle<N>> for CycleTracker<N> {
                 start: self.last_cycle.end,
                 end: self.last_zero
             };
-            debug!("({}, {}) length = {}",
-                self.last_cycle.start,
-                self.last_cycle.end,
-                (self.last_cycle.end + N - self.last_cycle.start) % N
-            );
         }
         
         if self.zero_detector.process(sample) {
