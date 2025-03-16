@@ -8,18 +8,25 @@ const MEMORY_SIZE: usize = MEMORY_BYTES / core::mem::size_of::<f32>();
 static mut MEMORY: [MaybeUninit<f32>; MEMORY_SIZE] = [MaybeUninit::uninit(); MEMORY_SIZE];
 
 
+/*
+ *  Simple allocator for f32 buffers.  
+ */
 pub fn allocate_buffer(len: usize) -> Option<&'static mut [f32]> {
     static mut INDEX: usize = 0;
-    unsafe {
+    let buffer = unsafe {
         if INDEX + len > MEMORY_SIZE {
-            None
+            return None;
         } else {
-            let buffer = core::slice::from_raw_parts_mut(&mut MEMORY[INDEX], len);
-            for i in 0..len {
-                buffer[i].write(0.0);
-            }
-            INDEX += len;
-            Some(core::mem::transmute(buffer))
+            core::slice::from_raw_parts_mut(&mut MEMORY[INDEX], len)
         }
+    };
+
+    for x in buffer.iter_mut() {
+        x.write(0.0);
+    }
+
+    unsafe {
+        INDEX += len;
+        Some(core::mem::transmute(buffer))
     }
 }
