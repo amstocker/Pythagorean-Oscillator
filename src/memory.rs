@@ -13,11 +13,14 @@ static mut MEMORY: [MaybeUninit<f32>; MEMORY_SIZE] = [MaybeUninit::uninit(); MEM
  */
 pub fn allocate_buffer(len: usize) -> Option<&'static mut [f32]> {
     static mut INDEX: usize = 0;
+    
     let buffer = unsafe {
         if INDEX + len > MEMORY_SIZE {
             return None;
         } else {
-            core::slice::from_raw_parts_mut(&mut MEMORY[INDEX], len)
+            let buffer = core::slice::from_raw_parts_mut(&mut MEMORY[INDEX], len);
+            INDEX += len;
+            buffer
         }
     };
 
@@ -25,8 +28,5 @@ pub fn allocate_buffer(len: usize) -> Option<&'static mut [f32]> {
         x.write(0.0);
     }
 
-    unsafe {
-        INDEX += len;
-        Some(core::mem::transmute(buffer))
-    }
+    unsafe { Some(core::mem::transmute(buffer)) }
 }

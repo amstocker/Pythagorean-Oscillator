@@ -7,7 +7,7 @@ pub use zero::*;
 
 pub type Sample = f32;
 
-pub trait Processor<T> {
+pub trait Processor<T = Sample> {
     fn process(&mut self, sample: Sample) -> T;
 }
 
@@ -28,7 +28,7 @@ impl EnvelopeDetector {
     }
 }
 
-impl Processor<Sample> for EnvelopeDetector {
+impl Processor for EnvelopeDetector {
     fn process(&mut self, sample: Sample) -> Sample {
         let rate = if sample > self.value {
             self.rise
@@ -56,7 +56,7 @@ impl LowPassFilter {
     }
 }
 
-impl Processor<Sample> for LowPassFilter {
+impl Processor for LowPassFilter {
     fn process(&mut self, sample: Sample) -> Sample {
         self.value += self.decay * (0.5 * (sample + self.prev_sample) - self.value);
         self.prev_sample = sample;

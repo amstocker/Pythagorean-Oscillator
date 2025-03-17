@@ -2,11 +2,6 @@ use crate::memory;
 use crate::dsp::{CycleDetector, LowPassFilter, Processor, ZeroDetector};
 
 
-// keep track of last M cycles, but need to make sure they are popped after
-// being overwritten?
-const CYCLE_HISTORY: usize = 16;
-
-
 // NOTE: this range includes the index
 // at the end _after_ the start of a new cycle
 #[derive(Default, Clone, Copy)]
@@ -46,6 +41,21 @@ impl<const N: usize> CycleTracker<N> {
             zero_detector: ZeroDetector::new(),
             last_zero: 0,
             last_cycle: Cycle::default()
+        }
+    }
+}
+
+impl<const N: usize> CycleTracker<N> {
+
+    // TODO: Actually implement error handling...
+    fn copy_cycle_to_buffer(&self, cycle: Cycle<N>, buffer: &mut [f32]) -> Result<(), ()> {
+        if cycle.length() > buffer.len() {
+            Err(())
+        } else {
+            for i in 0..cycle.length() {
+                buffer[i] = self.buffer[(cycle.start + i) % N];
+            }
+            Ok(())
         }
     }
 }

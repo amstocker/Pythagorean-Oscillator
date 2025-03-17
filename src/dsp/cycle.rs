@@ -85,21 +85,25 @@ impl Processor<CycleDetectInfo> for CycleDetector {
         let high_env_value = self.high_env.process(sample.max(0.0));
         let low_env_value = self.low_env.process(sample.min(0.0));
 
-        let mut high_off_to_on = false;
-        if self.high.off() && sample > high_env_value {
+        let high_off_to_on = if self.high.off() && sample > high_env_value {
             self.high.toggle();
-            high_off_to_on = true;
+            true
         } else if self.high.on() && sample < high_env_value {
             self.high.toggle();
-        }
+            false
+        } else {
+            false
+        };
 
-        let mut low_off_to_on = false;
-        if self.low.off() && sample < low_env_value {
+        let low_off_to_on = if self.low.off() && sample < low_env_value {
             self.low.toggle();
-            low_off_to_on = true;
+            true
         } else if self.low.on() && sample > low_env_value {
             self.low.toggle();
-        }
+            false
+        } else {
+            false
+        };
 
         let start = if self.cycle.off() && high_off_to_on {
             self.cycle.toggle();
@@ -114,6 +118,7 @@ impl Processor<CycleDetectInfo> for CycleDetector {
         };
 
         self.sample_counter += 1;
+
         CycleDetectInfo {
             length: self.cycle_length,
             start
