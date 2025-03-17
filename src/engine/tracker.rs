@@ -2,8 +2,6 @@ use crate::memory;
 use crate::dsp::{CycleDetector, LowPassFilter, Processor, ZeroDetector};
 
 
-// NOTE: this range includes the index
-// at the end _after_ the start of a new cycle
 #[derive(Default, Clone, Copy)]
 pub struct Cycle<const N: usize> {
     start: usize,
@@ -28,7 +26,6 @@ pub struct CycleTracker<const N: usize> {
     zero_detector: ZeroDetector,
     last_zero: usize,
     last_cycle: Cycle<N>
-    // count frames since end of last cycle?
 }
 
 impl<const N: usize> CycleTracker<N> {
@@ -46,16 +43,9 @@ impl<const N: usize> CycleTracker<N> {
 }
 
 impl<const N: usize> CycleTracker<N> {
-
-    // TODO: Actually implement error handling...
-    fn copy_cycle_to_buffer(&self, cycle: Cycle<N>, buffer: &mut [f32]) -> Result<(), ()> {
-        if cycle.length() > buffer.len() {
-            Err(())
-        } else {
-            for i in 0..cycle.length() {
-                buffer[i] = self.buffer[(cycle.start + i) % N];
-            }
-            Ok(())
+    fn copy_cycle_to_buffer(&self, cycle: Cycle<N>, buffer: &mut [f32]) {
+        for i in 0..cycle.length() {
+            buffer[i] = self.buffer[(cycle.start + i) % N];
         }
     }
 }

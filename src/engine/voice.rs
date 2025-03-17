@@ -39,18 +39,11 @@ impl<const N: usize> Voice<N> {
         self.update_phase_incr();
     }
 
-    // TODO: Actually implement error handling...
-    pub fn set_waveform(&mut self, buffer: &[f32], length: usize) -> Result<(), ()> {
-        if self.queue_buffer_swap || length > N {
-            // New waveform is already queued or waveform is too big for internal buffer.
-            Err(())
-        } else {
-            self.queue_buffer_swap = true;
-            self.queue_buffer_length = length;
-            for i in 0..length {
-                self.swap_buffer[i] = buffer[i];
-            }
-            Ok(())
+    pub fn set_waveform(&mut self, buffer: &[f32], length: usize) {
+        self.queue_buffer_swap = true;
+        self.queue_buffer_length = length;
+        for i in 0..length {
+            self.swap_buffer[i] = buffer[i];
         }
     }
 }
@@ -60,12 +53,14 @@ impl<const N: usize> Processor for Voice<N> {
 
         // TODO: Create more sophisticated interpolation methods
         //       in dsp module.
-        let index_approx = self.phase * self.buffer_length as f32;
-        let index = index_approx.floor();
-        let t = index_approx - index;
-
-        let i = index as usize;
-        let sample = (1.0 - t) * self.buffer[i] + t * self.buffer[(i + 1) % N];
+        let sample = {
+            let index_approx = self.phase * self.buffer_length as f32;
+            let index_floor = index_approx.floor();
+            let t = index_approx - index_floor;
+            let i = index_floor as usize;
+            
+            (1.0 - t) * self.buffer[i] + t * self.buffer[(i + 1) % N]
+        };
 
         self.phase += self.phase_incr;
         if self.phase > 1.0 {
