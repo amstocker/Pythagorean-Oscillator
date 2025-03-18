@@ -1,4 +1,7 @@
-use super::{EnvelopeDetector, LowPassFilter, Sample, Gate};
+use super::Sample;
+use super::env_detector::EnvelopeDetector;
+use super::gate::Gate;
+use super::lpf::LowPassFilter;
 
 
 pub struct Config {

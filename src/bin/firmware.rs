@@ -9,7 +9,6 @@ mod app {
     use daisy::audio::Interface;
 
     use prism_firmware::engine::Engine;
-    use prism_firmware::config::{NUM_VOICES, ENGINE_CONFIG};
 
 
     #[shared]
@@ -18,7 +17,7 @@ mod app {
     #[local]
     struct Local {
         audio_interface: Interface,
-        engine: Engine<NUM_VOICES>,
+        engine: Engine,
     }
 
     #[init]
@@ -43,7 +42,7 @@ mod app {
             Shared {},
             Local {
                 audio_interface,
-                engine: Engine::new(ENGINE_CONFIG)
+                engine: Engine::new()
             }
         )
     }

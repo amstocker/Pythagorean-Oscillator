@@ -1,15 +1,14 @@
 use crate::memory;
 use crate::dsp::{
-    cycle_detector::Config as CycleDetectorConfig,
-    CycleDetector,
     Sample,
-    ZeroDetector
+    cycle_detector::{self, CycleDetector},
+    zero::ZeroDetector
 };
 
 
 pub struct Config {
     pub buffer_size: usize,
-    pub cycle_detector_config: CycleDetectorConfig
+    pub cycle_detector_config: cycle_detector::Config
 }
 
 #[derive(Default, Clone, Copy)]
