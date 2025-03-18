@@ -1,6 +1,6 @@
 use crate::memory;
 use crate::dsp::{
-    cycle::Config as CycleDetectorConfig,
+    cycle_detector::Config as CycleDetectorConfig,
     CycleDetector,
     Sample,
     ZeroDetector

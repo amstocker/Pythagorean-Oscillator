@@ -1,7 +1,7 @@
-pub mod cycle;
+pub mod cycle_detector;
 pub mod zero;
 
-pub use cycle::*;
+pub use cycle_detector::*;
 pub use zero::*;
 
 

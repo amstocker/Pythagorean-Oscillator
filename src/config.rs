@@ -1,4 +1,4 @@
-use crate::dsp::cycle::Config as CycleDetectorConfig;
+use crate::dsp::cycle_detector::Config as CycleDetectorConfig;
 use crate::engine::Config as EngineConfig;
 use crate::engine::CycleTrackerConfig;
 use crate::engine::VoiceConfig;
