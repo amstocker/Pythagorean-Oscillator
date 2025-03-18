@@ -1,73 +1,67 @@
 use crate::memory;
-use crate::dsp::{CycleDetector, LowPassFilter, Processor, ZeroDetector};
+use crate::dsp::{
+    cycle::Config as CycleDetectorConfig,
+    CycleDetector,
+    Sample,
+    ZeroDetector
+};
 
+
+pub struct Config {
+    pub buffer_size: usize,
+    pub cycle_detector_config: CycleDetectorConfig
+}
 
 #[derive(Default, Clone, Copy)]
-pub struct Cycle<const N: usize> {
-    start: usize,
-    end: usize
+pub struct Cycle {
+    pub start: usize,
+    pub end: usize,
+    pub length: usize,
+    pub fresh: bool
 }
 
-impl<const N: usize> Cycle<N> {
-    pub fn length(&self) -> usize {
-        (self.end + N - self.start) % N
-    }
-
-    pub fn is_degenerate(&self) -> bool {
-        self.start == self.end
-    }
-}
-
-pub struct CycleTracker<const N: usize> {
+pub struct CycleTracker {
     buffer: &'static mut [f32],
+    buffer_size: usize,
     index: usize,
-    lpf: LowPassFilter,
     cycle_detector: CycleDetector,
     zero_detector: ZeroDetector,
     last_zero: usize,
-    last_cycle: Cycle<N>
+    last_cycle: Cycle
 }
 
-impl<const N: usize> CycleTracker<N> {
-    pub fn new() -> Self {
+impl CycleTracker {
+    pub fn new(config: Config) -> Self {
         CycleTracker {
-            buffer: memory::allocate_buffer(N).unwrap(),
+            buffer: memory::allocate_buffer(config.buffer_size).unwrap(),
+            buffer_size: config.buffer_size,
             index: 0,
-            lpf: LowPassFilter::new(0.01),
-            cycle_detector: CycleDetector::new(),
+            cycle_detector: CycleDetector::new(config.cycle_detector_config),
             zero_detector: ZeroDetector::new(),
             last_zero: 0,
             last_cycle: Cycle::default()
         }
     }
-}
-
-impl<const N: usize> CycleTracker<N> {
-    fn copy_cycle_to_buffer(&self, cycle: Cycle<N>, buffer: &mut [f32]) {
-        for i in 0..cycle.length() {
-            buffer[i] = self.buffer[(cycle.start + i) % N];
-        }
-    }
-}
-
-impl<const N: usize> Processor<Cycle<N>> for CycleTracker<N> {
-    fn process(&mut self, sample: crate::dsp::Sample) -> Cycle<N> {
+    
+    pub fn process(&mut self, sample: Sample) -> Cycle {
         self.buffer[self.index] = sample;
-        let lpf_value = self.lpf.process(sample);
-        
-        let cycle_info = self.cycle_detector.process(lpf_value);
+        let cycle_info = self.cycle_detector.process(sample);
         if cycle_info.start {
             self.last_cycle = Cycle {
                 start: self.last_cycle.end,
-                end: self.last_zero
+                end: self.last_zero,
+                length: (self.last_zero + self.buffer_size - self.last_cycle.end) % self.buffer_size,
+                fresh: true
             };
+        } else {
+            self.last_cycle.fresh = false;
         }
         
         if self.zero_detector.process(sample) {
             self.last_zero = self.index;
         }
 
-        self.index = (self.index + 1) % N;
+        self.index = (self.index + 1) % self.buffer_size;
         self.last_cycle
     }
 }

@@ -11,9 +11,9 @@ static mut MEMORY: [MaybeUninit<f32>; MEMORY_SIZE] = [MaybeUninit::uninit(); MEM
 /*
  *  Simple allocator for f32 buffers.  
  */
+static mut INDEX: usize = 0;
+
 pub fn allocate_buffer(len: usize) -> Option<&'static mut [f32]> {
-    static mut INDEX: usize = 0;
-    
     let buffer = unsafe {
         if INDEX + len > MEMORY_SIZE {
             return None;
@@ -29,4 +29,12 @@ pub fn allocate_buffer(len: usize) -> Option<&'static mut [f32]> {
     }
 
     unsafe { Some(core::mem::transmute(buffer)) }
+}
+
+pub fn size() -> usize {
+    MEMORY_SIZE
+}
+
+pub fn capacity() -> usize {
+    unsafe { MEMORY_SIZE - INDEX }
 }

@@ -1,9 +1,20 @@
-pub const MAIN_BUFFER_SIZE: usize = 4096;
+use crate::dsp::cycle::Config as CycleDetectorConfig;
+use crate::engine::Config as EngineConfig;
+use crate::engine::CycleTrackerConfig;
+use crate::engine::VoiceConfig;
 
-pub const NUM_VOICES: usize = 4;
-pub const VOICE_BUFFER_SIZE: usize = 2048;
+pub const NUM_VOICES: usize = 8;
 
-pub const CYCLE_DETECT_ENV_RISE: f32 = 0.1;
-
-// TODO: This param should be configurable via CV.
-pub const CYCLE_DETECT_ENV_FALL: f32 = 0.001;
+pub const ENGINE_CONFIG: EngineConfig = EngineConfig {
+    voice_config: VoiceConfig {
+        buffer_size: 2048,
+    },
+    cycle_tracker_config: CycleTrackerConfig {
+        buffer_size: 8192,
+        cycle_detector_config: CycleDetectorConfig {
+            lpf_decay: 0.005,
+            env_rise: 0.1,
+            env_fall: 0.0001,
+        },
+    },
+};

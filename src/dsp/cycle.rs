@@ -1,49 +1,11 @@
-use crate::config;
-
-use super::{Sample, Processor, EnvelopeDetector};
+use super::{EnvelopeDetector, LowPassFilter, Sample, Gate};
 
 
-// Do we need to store state here?  Might be helpful to know
-// when it's state has changed or not... (impl Processor for gate?)
-#[derive(Default)]
-pub enum Gate {
-    On,
-    #[default]
-    Off
+pub struct Config {
+    pub lpf_decay: f32,
+    pub env_rise: f32,
+    pub env_fall: f32
 }
-
-impl Gate {
-    pub fn on(&self) -> bool {
-        match self {
-            Gate::On  => true,
-            Gate::Off => false,
-        }
-    }
-
-    pub fn off(&self) -> bool {
-        match self {
-            Gate::On  => false,
-            Gate::Off => true,
-        }
-    }
-
-    pub fn toggle(&mut self) {
-        *self = match self {
-            Gate::On  => Gate::Off,
-            Gate::Off => Gate::On,
-        }
-    }
-}
-
-impl From<Gate> for Sample {
-    fn from(value: Gate) -> Self {
-        match value {
-            Gate::On  => 1.0,
-            Gate::Off => 0.0,
-        }
-    }
-}
-
 
 pub struct CycleDetectInfo {
     pub length: u32,
@@ -54,6 +16,7 @@ pub struct CycleDetector {
     high: Gate,
     low: Gate,
     cycle: Gate,
+    lpf: LowPassFilter,
     high_env: EnvelopeDetector,
     low_env: EnvelopeDetector,
     sample_counter: u32,
@@ -61,44 +24,44 @@ pub struct CycleDetector {
 }
 
 impl CycleDetector {
-    pub fn new() -> Self {
+    pub fn new(config: Config) -> Self {
         CycleDetector {
             high: Gate::default(),
             low: Gate::default(),
             cycle: Gate::default(),
+            lpf: LowPassFilter::new(config.lpf_decay),
             high_env: EnvelopeDetector::new(
-                config::CYCLE_DETECT_ENV_RISE,
-                config::CYCLE_DETECT_ENV_FALL
+                config.env_rise,
+                config.env_fall
             ),
             low_env: EnvelopeDetector::new(
-                config::CYCLE_DETECT_ENV_FALL, 
-                config::CYCLE_DETECT_ENV_RISE
+                config.env_fall, 
+                config.env_rise
             ),
             sample_counter: 0,
             cycle_length: 0
         }
     }
-}
+    
+    pub fn process(&mut self, sample: Sample) -> CycleDetectInfo {
+        let lpf_value = self.lpf.process(sample);
+        let high_env_value = self.high_env.process(lpf_value.max(0.0));
+        let low_env_value = self.low_env.process(lpf_value.min(0.0));
 
-impl Processor<CycleDetectInfo> for CycleDetector {
-    fn process(&mut self, sample: Sample) -> CycleDetectInfo {
-        let high_env_value = self.high_env.process(sample.max(0.0));
-        let low_env_value = self.low_env.process(sample.min(0.0));
-
-        let high_off_to_on = if self.high.off() && sample > high_env_value {
+        let high_off_to_on = if self.high.off() && lpf_value > high_env_value {
             self.high.toggle();
             true
-        } else if self.high.on() && sample < high_env_value {
+        } else if self.high.on() && lpf_value < high_env_value {
             self.high.toggle();
             false
         } else {
             false
         };
 
-        let low_off_to_on = if self.low.off() && sample < low_env_value {
+        let low_off_to_on = if self.low.off() && lpf_value < low_env_value {
             self.low.toggle();
             true
-        } else if self.low.on() && sample > low_env_value {
+        } else if self.low.on() && lpf_value > low_env_value {
             self.low.toggle();
             false
         } else {

@@ -1,4 +1,4 @@
-use super::{Processor, Sample};
+use super::Sample;
 
 
 pub struct ZeroDetector {
@@ -11,10 +11,8 @@ impl ZeroDetector {
             prev_sample: Sample::default()
         }
     }
-}
-
-impl Processor<bool> for ZeroDetector {
-    fn process(&mut self, sample: Sample) -> bool {
+    
+    pub fn process(&mut self, sample: Sample) -> bool {
         let mut zero_crossing = false;
         if !(sample * self.prev_sample > 0.0) {
             zero_crossing = true;

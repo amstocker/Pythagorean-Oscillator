@@ -1,32 +1,37 @@
 use micromath::F32Ext;
 
-use crate::{dsp::{Processor, Sample}, memory};
+use crate::{dsp::Sample, memory};
 
 
-pub struct Voice<const N: usize> {
-    buffer: &'static mut [f32],
+#[derive(Clone, Copy)]
+pub struct Config {
+    pub buffer_size: usize
+}
+
+pub struct Voice {
+    pub buffer: &'static mut [f32],
+    pub buffer_size: usize,
     swap_buffer: &'static mut [f32],
     buffer_length: usize,
     samples_per_cycle: usize,
     phase: f32,
     phase_incr: f32,
     queue_buffer_swap: bool,
-    queue_buffer_length: usize,
-    fixed_rate: bool
+    queue_buffer_length: usize
 }
 
-impl<const N: usize> Voice<N> {
-    pub fn new(fixed_rate: bool) -> Self {
+impl Voice {
+    pub fn new(config: Config) -> Self {
         Voice {
-            buffer: memory::allocate_buffer(N).unwrap(),
-            swap_buffer: memory::allocate_buffer(N).unwrap(),
+            buffer: memory::allocate_buffer(config.buffer_size).unwrap(),
+            buffer_size: config.buffer_size,
+            swap_buffer: memory::allocate_buffer(config.buffer_size).unwrap(),
             buffer_length: 0,
             samples_per_cycle: 0,
             phase: 0.0,
-            phase_incr: 0.0,
+            phase_incr: 1.0,
             queue_buffer_swap: false,
             queue_buffer_length: 0,
-            fixed_rate
         }
     }
 
@@ -40,17 +45,18 @@ impl<const N: usize> Voice<N> {
     }
 
     pub fn set_waveform(&mut self, buffer: &[f32], length: usize) {
+        if length > self.buffer_size {
+            return;
+        }
         self.queue_buffer_swap = true;
         self.queue_buffer_length = length;
         for i in 0..length {
             self.swap_buffer[i] = buffer[i];
         }
     }
-}
 
-impl<const N: usize> Processor for Voice<N> {
-    fn process(&mut self, _sample: Sample) -> Sample {
-
+    pub fn next_sample(&mut self) -> Sample {
+        
         // TODO: Create more sophisticated interpolation methods
         //       in dsp module.
         let sample = {
@@ -59,7 +65,7 @@ impl<const N: usize> Processor for Voice<N> {
             let t = index_approx - index_floor;
             let i = index_floor as usize;
             
-            (1.0 - t) * self.buffer[i] + t * self.buffer[(i + 1) % N]
+            (1.0 - t) * self.buffer[i] + t * self.buffer[(i + 1) % self.buffer_size]
         };
 
         self.phase += self.phase_incr;
@@ -68,12 +74,9 @@ impl<const N: usize> Processor for Voice<N> {
             if self.queue_buffer_swap {
                 self.queue_buffer_swap = false;
                 self.buffer_length = self.queue_buffer_length;
-                if !self.fixed_rate {
-                    self.set_rate(self.buffer_length);
-                }
+                self.set_rate(self.buffer_length);
                 self.update_phase_incr();
 
-                // TODO: Double check this actually works!
                 core::mem::swap(&mut self.buffer, &mut self.swap_buffer);
             }
         }

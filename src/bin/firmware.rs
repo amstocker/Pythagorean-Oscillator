@@ -7,9 +7,10 @@ use prism_firmware as _; // global logger + panicking-behavior + memory layout
 #[rtic::app(device = stm32h7xx_hal::pac, peripherals = true)]
 mod app {
     use daisy::audio::Interface;
-    use defmt::debug;
 
-    use prism_firmware::{dsp::Processor, engine::CycleTracker};
+    use prism_firmware::engine::Engine;
+    use prism_firmware::config::{NUM_VOICES, ENGINE_CONFIG};
+
 
     #[shared]
     struct Shared {}
@@ -17,11 +18,7 @@ mod app {
     #[local]
     struct Local {
         audio_interface: Interface,
-
-        // TODO: put const somewhere else?
-        cycle_tracker: CycleTracker<4096>,
-
-        phase: f32
+        engine: Engine<NUM_VOICES>,
     }
 
     #[init]
@@ -36,43 +33,30 @@ mod app {
 
         let ccdr = daisy::board_freeze_clocks!(board, dp);
         let pins = daisy::board_split_gpios!(board, ccdr, dp);
-        let mut led_user = daisy::board_split_leds!(pins).USER;
-        let one_second = ccdr.clocks.sys_ck().to_Hz();
+        //let mut led_user = daisy::board_split_leds!(pins).USER;
+        //let one_second = ccdr.clocks.sys_ck().to_Hz();
         
         let audio_interface = daisy::board_split_audio!(ccdr, pins);
         let audio_interface = audio_interface.spawn().unwrap();
 
-        debug!("Finished init.");
         (
             Shared {},
             Local {
                 audio_interface,
-                cycle_tracker: CycleTracker::new(),
-                phase: 0.0
+                engine: Engine::new(ENGINE_CONFIG)
             }
         )
     }
 
-    #[task(binds = DMA1_STR1, local = [audio_interface, cycle_tracker, phase])]
+    #[task(binds = DMA1_STR1, local = [audio_interface, engine])]
     fn audio(cx: audio::Context) {
-        use micromath::F32Ext;
-        use core::f32::consts::PI;
-
         let audio_interface = cx.local.audio_interface;
-        let cycle_tracker = cx.local.cycle_tracker;
-        let phase = cx.local.phase;
+        let engine = cx.local.engine;
 
         audio_interface
             .handle_interrupt_dma1_str1(|audio_buffer| {
                 for frame in audio_buffer {
-                    let cycle = cycle_tracker.process(frame.0);
-                    if cycle.length() > 0 {
-                        *phase += 1.0 / cycle.length() as f32;
-                        if *phase > 1.0 {
-                            *phase -= 1.0;
-                        }
-                    }
-                    *frame = (frame.0, (*phase * 2.0 * PI).sin());
+                    *frame = (frame.0, engine.process(frame.0));
                 }
             })
             .unwrap();

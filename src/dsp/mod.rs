@@ -7,10 +7,18 @@ pub use zero::*;
 
 pub type Sample = f32;
 
-pub trait Processor<T = Sample> {
-    fn process(&mut self, sample: Sample) -> T;
+pub enum Rate {
+    VeryFast,
+    Fast,
+    Medium,
+    Slow,
+    VerySlow
 }
 
+pub struct EnvelopeDetectorConfig {
+    pub rise: f32,
+    pub fall: f32
+}
 
 pub struct EnvelopeDetector {
     rise: f32,
@@ -26,10 +34,8 @@ impl EnvelopeDetector {
             value: Sample::default()
         }
     }
-}
-
-impl Processor for EnvelopeDetector {
-    fn process(&mut self, sample: Sample) -> Sample {
+    
+    pub fn process(&mut self, sample: Sample) -> Sample {
         let rate = if sample > self.value {
             self.rise
         } else {
@@ -54,12 +60,50 @@ impl LowPassFilter {
             prev_sample: Sample::default()
         }
     }
-}
-
-impl Processor for LowPassFilter {
-    fn process(&mut self, sample: Sample) -> Sample {
+    
+    pub fn process(&mut self, sample: Sample) -> Sample {
         self.value += self.decay * (0.5 * (sample + self.prev_sample) - self.value);
         self.prev_sample = sample;
         self.value
+    }
+}
+
+
+#[derive(Default)]
+pub enum Gate {
+    On,
+    #[default]
+    Off
+}
+
+impl Gate {
+    pub fn on(&self) -> bool {
+        match self {
+            Gate::On  => true,
+            Gate::Off => false,
+        }
+    }
+
+    pub fn off(&self) -> bool {
+        match self {
+            Gate::On  => false,
+            Gate::Off => true,
+        }
+    }
+
+    pub fn toggle(&mut self) {
+        *self = match self {
+            Gate::On  => Gate::Off,
+            Gate::Off => Gate::On,
+        }
+    }
+}
+
+impl From<Gate> for Sample {
+    fn from(value: Gate) -> Self {
+        match value {
+            Gate::On  => 1.0,
+            Gate::Off => 0.0,
+        }
     }
 }
