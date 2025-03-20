@@ -10,7 +10,7 @@ pub const ENGINE_CONFIG: engine::Config = engine::Config {
     tracker_config: engine::tracker::Config {
         buffer_size: 8192,
         cycle_detector_config: dsp::cycle_detector::Config {
-            lpf_decay: 0.005,
+            lpf_freq: 400.0,
             env_rise: 0.1,
             env_fall: 0.0001,
         },

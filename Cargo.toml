@@ -10,6 +10,7 @@ cortex-m-rt = { version = "0.7", features = [ "device" ] }
 stm32h7xx-hal = { version = "0.16", features = [ "stm32h750v", "rt", "revision_v", "usb_hs", "xspi", "fmc", "defmt"] }
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 rtic = { version = "2.0.0", features = [ "thumbv7-backend" ] }
+rtic-monotonics = { version = "2.0", features = [ "cortex-m-systick" ] }
 defmt = "0.3"
 defmt-rtt = "0.4"
 micromath = "2.1"

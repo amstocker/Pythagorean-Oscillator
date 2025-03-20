@@ -5,7 +5,7 @@ use super::lpf::LowPassFilter;
 
 
 pub struct Config {
-    pub lpf_decay: f32,
+    pub lpf_freq: f32,
     pub env_rise: f32,
     pub env_fall: f32
 }
@@ -32,7 +32,7 @@ impl CycleDetector {
             high: Gate::default(),
             low: Gate::default(),
             cycle: Gate::default(),
-            lpf: LowPassFilter::new(config.lpf_decay),
+            lpf: LowPassFilter::new(config.lpf_freq),
             high_env: EnvelopeDetector::new(
                 config.env_rise,
                 config.env_fall
