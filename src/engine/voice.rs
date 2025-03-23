@@ -1,6 +1,7 @@
 use micromath::F32Ext;
 
-use crate::{dsp::Sample, memory};
+use crate::dsp::Sample;
+use crate::system::memory;
 
 
 #[derive(Clone, Copy)]

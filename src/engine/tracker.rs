@@ -1,9 +1,9 @@
-use crate::memory;
 use crate::dsp::{
     Sample,
     cycle_detector::{self, CycleDetector},
     zero::ZeroDetector
 };
+use crate::system::memory;
 
 
 pub struct Config {

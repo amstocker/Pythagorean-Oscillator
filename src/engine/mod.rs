@@ -2,7 +2,9 @@ pub mod tracker;
 pub mod voice;
 
 use crate::config::ENGINE_CONFIG;
-use crate::{dsp::Sample, memory};
+use crate::dsp::Sample;
+use crate::system::memory;
+
 pub use tracker::CycleTracker;
 pub use voice::Voice;
 
