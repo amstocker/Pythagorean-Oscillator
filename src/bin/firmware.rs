@@ -87,7 +87,7 @@ mod app {
             if *hop_counter % HOP_INTERVAL == 0 {
                 window_buffer.lock(|window_buffer| {
                     let end = *hop_counter * BLOCK_LENGTH;
-                    let start = (end + MAIN_BUFFER_SIZE - WINDOW_BUFFER_SIZE) % MAIN_BUFFER_SIZE;
+                    let start = end.wrapping_sub(WINDOW_BUFFER_SIZE) % MAIN_BUFFER_SIZE;
                     for i in 0..WINDOW_BUFFER_SIZE {
                         window_buffer[i] = main_buffer[(start + i) % MAIN_BUFFER_SIZE].into();
                     }
