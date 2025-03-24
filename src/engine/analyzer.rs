@@ -17,25 +17,18 @@ impl Analyzer {
     pub fn init() -> Self {
         Analyzer {
             windowing_func: windowing::build_windowing_func(BUFFER_SIZE),
-            phase_history: memory::allocate_buffer(BUFFER_SIZE).unwrap(),
+            phase_history: memory::allocate_f32_buffer(BUFFER_SIZE).unwrap(),
             frequency: 0.0
         }
     }
 
-    pub fn process(&mut self, window_buffer: &mut [f32]) {
+    pub fn process(&mut self, window_buffer: &mut [Complex32]) {
         for i in 0..BUFFER_SIZE {
-            window_buffer[2 * i] *= self.windowing_func[i];
+            // Assume window_buffer[i].im == 0.0;
+            window_buffer[i].re *= self.windowing_func[i];
         }
 
-        let samples = {
-            let slice = unsafe {
-                let ptr = window_buffer.as_mut_ptr().cast::<Complex32>();
-                core::slice::from_raw_parts_mut(ptr, BUFFER_SIZE)
-            };
-            slice.try_into().unwrap()
-        };
-
-        let spectrum = cfft_2048(samples);
+        let spectrum = cfft_2048(window_buffer.try_into().unwrap());
 
         let mut max_index = 0;
         let mut max_norm_sq = 0.0;

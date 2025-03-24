@@ -17,7 +17,7 @@ mod app {
 
     #[shared]
     struct Shared {
-        window_buffer: &'static mut [f32]
+        window_buffer: &'static mut [microfft::Complex32]
     }
 
     #[local]
@@ -36,12 +36,12 @@ mod app {
         } = System::init(cx.core, cx.device);
         
         let shared = Shared {
-            window_buffer: memory::allocate_buffer(2 * BUFFER_SIZE).unwrap()
+            window_buffer: memory::allocate_complex32_buffer(BUFFER_SIZE).unwrap()
         };
 
         let local = Local {
             audio_interface,
-            main_buffer: memory::allocate_buffer(BUFFER_SIZE).unwrap(),
+            main_buffer: memory::allocate_f32_buffer(BUFFER_SIZE).unwrap(),
             hop_counter: 0,
             analyzer: Analyzer::init()
         };
@@ -86,12 +86,10 @@ mod app {
                 window_buffer.lock(|window_buffer| {
                     let end = BUFFER_SIZE - start;
                     for i in 0..end {
-                        window_buffer[2 * i] = main_buffer[start + i];
-                        window_buffer[2 * i + 1] = 0.0;
+                        window_buffer[i] = main_buffer[start + i].into();
                     }
                     for i in 0..start {
-                        window_buffer[2 * (end + i)] = main_buffer[i];
-                        window_buffer[2 * (end + i) + 1] = 0.0;
+                        window_buffer[end + i] = main_buffer[i].into();
                     }
                 });
 
@@ -113,5 +111,7 @@ mod app {
         window_buffer.lock(|window_buffer| {
             analyzer.process(window_buffer);     
         });
+
+        defmt::debug!("freq = {}, length = {}", analyzer.frequency(), SAMPLE_RATE as f32 / analyzer.frequency());
     }
 }
