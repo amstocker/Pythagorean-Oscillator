@@ -30,10 +30,9 @@ impl Analyzer {
         // Steps:
         //  1. Multiply the window buffer with a windowing function.
         //  2. Calculate the discrete fourier transform of the window.
-        //  3. Find the frequency bucket with peak magnitude.
+        //  3. Estimate frequency using magnitude spectrum.
         //  4. Use the difference in phase at the peak magnitude to get
-        //     an accurate estimate for the frequency of the incoming
-        //     signal.
+        //     a much more accurate estimate for the frequency.
 
         // Step 1
         for i in 0..WINDOW_BUFFER_SIZE {
@@ -42,9 +41,10 @@ impl Analyzer {
         }
 
         // Step 2
-        let spectrum = cfft_2048(window_buffer.try_into().unwrap());
+        let samples = window_buffer.try_into().unwrap();
+        let spectrum = cfft_2048(samples);
 
-        // Step 3
+        // Step 3 (TODO: parabolic interpolation of max)
         let mut max_index = 0;
         let mut max_norm_sq = 0.0;
         let mut max_prev_phase = 0.0;
