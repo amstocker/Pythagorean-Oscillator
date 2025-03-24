@@ -177,7 +177,7 @@ mod app {
             loop {
                 let f = (dp + p) / dt;
                 if f > max_freq {
-                    *frequency = if (f - max_freq).abs() < (f_prev - max_freq).abs() {
+                    *frequency = if f - max_freq < max_freq - f_prev {
                         f
                     } else {
                         f_prev
