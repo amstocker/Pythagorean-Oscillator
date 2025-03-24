@@ -10,15 +10,9 @@ use prism_firmware as _; // global logger + panicking-behavior + memory layout
     dispatchers = [EXTI0]
 )]
 mod app {
-    use prism_firmware::system::{memory, *};
-
-
-    use daisy::audio::BLOCK_LENGTH;
-    use prism_firmware::dsp::windowing;
-
-    const BUFFER_SIZE: usize = 2048;
-    const HOP_INTERVAL: usize = 4;  // In number of blocks
-    const HOP_LIM: usize = BUFFER_SIZE / BLOCK_LENGTH;
+    use prism_firmware::consts::*;
+    use prism_firmware::system::*;
+    use prism_firmware::engine::Analyzer;
 
 
     #[shared]
@@ -31,9 +25,7 @@ mod app {
         audio_interface: AudioInterface,
         main_buffer: &'static mut [f32],
         hop_counter: usize,
-        windowing_func: &'static [f32],
-        phase_data: &'static mut [f32],
-        frequency: f32
+        analyzer: Analyzer
     }
 
     #[init]
@@ -51,9 +43,7 @@ mod app {
             audio_interface,
             main_buffer: memory::allocate_buffer(BUFFER_SIZE).unwrap(),
             hop_counter: 0,
-            windowing_func: windowing::build_window(BUFFER_SIZE),
-            phase_data: memory::allocate_buffer(BUFFER_SIZE).unwrap(),
-            frequency: 0.0
+            analyzer: Analyzer::init()
         };
 
         defmt::debug!("Finished init (free memory: {} / {} kB)", memory::capacity() / 1024, memory::size() / 1024);
@@ -113,82 +103,17 @@ mod app {
 
     #[task(
         priority = 1,
-        local = [
-            windowing_func,
-            phase_data,
-            frequency
-        ],
-        shared = [
-            window_buffer
-        ]
+        local = [analyzer],
+        shared = [window_buffer]
     )]
     async fn analyze(cx: analyze::Context) {
-        let analyze::LocalResources {
-            windowing_func,
-            phase_data,
-            frequency, ..
-        } = cx.local;
-
-        let analyze::SharedResources {
-            mut window_buffer, ..
-        } = cx.shared;
-
-
-        use microfft::{Complex32, complex::cfft_2048};
-        use micromath::F32Ext;
-        use core::f32::consts::PI;
-        use daisy::audio::FS;
+        let analyzer = cx.local.analyzer;
+        let mut window_buffer = cx.shared.window_buffer;
 
         window_buffer.lock(|window_buffer| {
-            for i in 0..BUFFER_SIZE {
-                window_buffer[2 * i] *= windowing_func[i];
-            }
-
-            let samples = {
-                let slice = unsafe {
-                    let ptr = window_buffer.as_mut_ptr().cast::<Complex32>();
-                    core::slice::from_raw_parts_mut(ptr, BUFFER_SIZE)
-                };
-                slice.try_into().unwrap()
-            };
-
-            let spectrum = cfft_2048(samples);
-
-            let mut max_index = 0;
-            let mut max_norm_sq = 0.0;
-            let mut max_prev_phase = 0.0;
-            for i in 0..(BUFFER_SIZE / 2) {
-                let Complex32 { re, im} = spectrum[i];
-                let norm_sq = re * re + im * im;
-                if norm_sq > max_norm_sq {
-                    max_norm_sq = norm_sq;
-                    max_index = i;
-                    max_prev_phase = phase_data[i];
-                }
-                phase_data[i] = im.atan2(re);
-            }
-
-            let max_freq = (max_index as f32 / BUFFER_SIZE as f32) * FS.to_Hz() as f32; 
-
-            let dt = 2.0 * PI * ((HOP_INTERVAL * BLOCK_LENGTH) as f32 / FS.to_Hz() as f32);
-            let dp = phase_data[max_index] - max_prev_phase;
-            let mut p = 0.0;
-            let mut f_prev = 0.0;
-            loop {
-                let f = (dp + p) / dt;
-                if f > max_freq {
-                    *frequency = if f - max_freq < max_freq - f_prev {
-                        f
-                    } else {
-                        f_prev
-                    };
-                    break;
-                }
-                f_prev = f;
-                p += 2.0 * PI;
-            }
-
-            defmt::debug!("freq = {}", *frequency);
+            analyzer.process(window_buffer);     
         });
+
+        defmt::debug!("freq = {}", analyzer.frequency());
     }
 }

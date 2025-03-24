@@ -1,5 +1,3 @@
-use super::Sample;
-
 use micromath::F32Ext;
 
 
@@ -20,16 +18,16 @@ pub fn hz_to_lpf_decay(freq: f32) -> f32 {
 // where a = exp(-2*PI*(f/f_S)).
 pub struct LowPassFilter {
     decay: f32,
-    value: Sample,
-    prev_sample: Sample
+    value: f32,
+    prev_sample: f32
 }
 
 impl LowPassFilter {
     pub fn new(freq: f32) -> Self {
         LowPassFilter {
             decay: hz_to_lpf_decay(freq),
-            value: Sample::default(),
-            prev_sample: Sample::default()
+            value: 0.0,
+            prev_sample: 0.0
         }
     }
 
@@ -37,7 +35,7 @@ impl LowPassFilter {
         self.decay = hz_to_lpf_decay(freq);
     }
     
-    pub fn process(&mut self, sample: Sample) -> Sample {
+    pub fn process(&mut self, sample: f32) -> f32 {
         self.value += (sample + 0.12 * self.prev_sample) - self.decay * self.value;
         self.prev_sample = sample;
         self.value
