@@ -46,7 +46,7 @@ mod app {
             analyzer: Analyzer::init()
         };
 
-        defmt::debug!("Finished init (free memory: {} / {} kB)", memory::capacity() / 1024, memory::size() / 1024);
+        defmt::trace!("Finished init (free memory: {} / {} kB)", memory::capacity() / 1024, memory::size() / 1024);
 
         (shared, local)
     }
@@ -113,7 +113,5 @@ mod app {
         window_buffer.lock(|window_buffer| {
             analyzer.process(window_buffer);     
         });
-
-        defmt::debug!("freq = {}", analyzer.frequency());
     }
 }

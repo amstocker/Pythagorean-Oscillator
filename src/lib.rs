@@ -12,7 +12,7 @@ pub mod consts;
 pub mod dsp;
 pub mod engine;
 pub mod system;
-
+pub mod utils;
 
 
 // same panicking *behavior* as `panic-probe` but doesn't print a panic message
