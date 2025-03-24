@@ -14,6 +14,8 @@ rtic-monotonics = { version = "2.0", features = [ "cortex-m-systick" ] }
 defmt = "0.3"
 defmt-rtt = "0.4"
 micromath = "2.1"
+microfft = { version = "0.6", default-features = false, features = [ "size-2048" ] }
+
 
 # cargo build/run
 [profile.dev]

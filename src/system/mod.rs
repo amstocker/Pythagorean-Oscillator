@@ -8,7 +8,7 @@ pub use rtic_monotonics::systick::prelude::*;
 pub use daisy::audio::Interface as AudioInterface;
 
 
-systick_monotonic!(Mono, 1000);
+systick_monotonic!(Mono, 1_000_000);
 
 pub type Led = Pin<'C', 7, Output>;
 pub type Gate = Pin<'C', 1, Input>;
