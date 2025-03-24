@@ -44,7 +44,6 @@ mod app {
         } = System::init(cx.core, cx.device);
         
         let shared = Shared {
-            // This same buffer is used to calculate a complex FFT
             window_buffer: memory::allocate_buffer(2 * BUFFER_SIZE).unwrap()
         };
 
@@ -155,39 +154,41 @@ mod app {
 
             let spectrum = cfft_2048(samples);
 
+            let mut max_index = 0;
             let mut max_norm_sq = 0.0;
-            let mut max_norm_bucket = 0;
             let mut max_prev_phase = 0.0;
             for i in 0..(BUFFER_SIZE / 2) {
                 let Complex32 { re, im} = spectrum[i];
                 let norm_sq = re * re + im * im;
                 if norm_sq > max_norm_sq {
                     max_norm_sq = norm_sq;
-                    max_norm_bucket = i;
+                    max_index = i;
                     max_prev_phase = phase_data[i];
                 }
                 phase_data[i] = im.atan2(re);
             }
 
-            let bucket_freq = max_norm_bucket as f32 * (FS.to_Hz() as f32 / BUFFER_SIZE as f32); 
+            let max_freq = (max_index as f32 / BUFFER_SIZE as f32) * FS.to_Hz() as f32; 
 
-            let mut phase = 0.0;
-            let mut prev_f = 0.0;
-            let dt = (HOP_INTERVAL * BLOCK_LENGTH) as f32 / FS.to_Hz() as f32;
-            let dp = phase_data[max_norm_bucket] - max_prev_phase;
+            let dt = 2.0 * PI * ((HOP_INTERVAL * BLOCK_LENGTH) as f32 / FS.to_Hz() as f32);
+            let dp = phase_data[max_index] - max_prev_phase;
+            let mut p = 0.0;
+            let mut f_prev = 0.0;
             loop {
-                let f = (dp + phase) / (2.0 * PI * dt);
-                if f > bucket_freq {
-                    *frequency = if (f - bucket_freq).abs() < (prev_f - bucket_freq).abs() {
+                let f = (dp + p) / dt;
+                if f > max_freq {
+                    *frequency = if (f - max_freq).abs() < (f_prev - max_freq).abs() {
                         f
                     } else {
-                        prev_f
+                        f_prev
                     };
                     break;
                 }
-                prev_f = f;
-                phase += 2.0 * PI;
+                f_prev = f;
+                p += 2.0 * PI;
             }
+
+            defmt::debug!("freq = {}", *frequency);
         });
     }
 }
