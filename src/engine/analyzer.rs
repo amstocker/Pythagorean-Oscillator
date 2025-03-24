@@ -1,4 +1,3 @@
-use defmt::debug;
 use microfft::{Complex32, complex::cfft_2048};
 use micromath::F32Ext;
 use core::f32::consts::PI;
@@ -10,20 +9,20 @@ use crate::dsp::windowing;
 
 pub struct Analyzer {
     windowing_func: &'static [f32],
-    phase_history: &'static mut [f32],
-    frequency: f32
+    phase_history: &'static mut [f32]
 }
 
 impl Analyzer {
     pub fn init() -> Self {
         Analyzer {
-            windowing_func: windowing::build_windowing_func(WINDOW_BUFFER_SIZE),
-            phase_history: memory::allocate_f32_buffer(WINDOW_BUFFER_SIZE).unwrap(),
-            frequency: 0.0
+            windowing_func:
+                windowing::build_windowing_func(WINDOW_BUFFER_SIZE),
+            phase_history:
+                memory::allocate_f32_buffer(WINDOW_BUFFER_SIZE).unwrap()
         }
     }
 
-    pub fn process(&mut self, window_buffer: &mut [Complex32]) {
+    pub fn process(&mut self, window_buffer: &mut [Complex32]) -> f32 {
         for i in 0..WINDOW_BUFFER_SIZE {
             // Assume window_buffer[i].im == 0.0;
             window_buffer[i].re *= self.windowing_func[i];
@@ -54,19 +53,14 @@ impl Analyzer {
         loop {
             let f = (dp + p) / dt;
             if f > f_est {
-                self.frequency = if f - f_est < f_est - f_prev {
+                return if f - f_est < f_est - f_prev {
                     f
                 } else {
                     f_prev
                 };
-                break;
             }
             f_prev = f;
             p += 2.0 * PI;
         }
-    }
-
-    pub fn frequency(&self) -> f32 {
-        self.frequency
     }
 }

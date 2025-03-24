@@ -108,10 +108,10 @@ mod app {
         let analyzer = cx.local.analyzer;
         let mut window_buffer = cx.shared.window_buffer;
 
-        window_buffer.lock(|window_buffer| {
-            analyzer.process(window_buffer);     
-        });
+        let frequency = window_buffer.lock(|window_buffer|
+            analyzer.process(window_buffer)  
+        );
 
-        debug!("freq = {}, length = {}", analyzer.frequency(), SAMPLE_RATE as f32 / analyzer.frequency());
+        debug!("freq = {}, length = {}", frequency, SAMPLE_RATE as f32 / frequency);
     }
 }
