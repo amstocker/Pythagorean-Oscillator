@@ -49,7 +49,7 @@ impl Analyzer {
         let mut max_norm_sq = 0.0;
         let mut max_prev_phase = 0.0;
         for i in 0..(WINDOW_BUFFER_SIZE / 2) {
-            let Complex32 { re, im} = spectrum[i];
+            let Complex32 { re, im } = spectrum[i];
             let norm_sq = re * re + im * im;
             if norm_sq > max_norm_sq {
                 max_norm_sq = norm_sq;
@@ -60,8 +60,8 @@ impl Analyzer {
         }
 
         // Step 4:
-        // - Our estimate for the frequency is the center frequency of the bucket
-        //   with the maximum magnitude calculated above.
+        // - Our initial estimate for the frequency is the center frequency of the
+        //   bucket with the maximum magnitude calculated above.
         // - To get a more accurate estimate for the frequency, we use the difference
         //   in phase.  This can only give us the frequency up to a multiple of 2pi,
         //   so we find the multiple that is closest to the estimated frequency.
