@@ -10,6 +10,8 @@ use prism_firmware as _; // global logger + panicking-behavior + memory layout
     dispatchers = [EXTI0]
 )]
 mod app {
+    use defmt::{trace, debug};
+
     use prism_firmware::consts::*;
     use prism_firmware::system::*;
     use prism_firmware::engine::Analyzer;
@@ -36,17 +38,17 @@ mod app {
         } = System::init(cx.core, cx.device);
         
         let shared = Shared {
-            window_buffer: memory::allocate_complex32_buffer(BUFFER_SIZE).unwrap()
+            window_buffer: memory::allocate_complex32_buffer(WINDOW_BUFFER_SIZE).unwrap()
         };
 
         let local = Local {
             audio_interface,
-            main_buffer: memory::allocate_f32_buffer(BUFFER_SIZE).unwrap(),
+            main_buffer: memory::allocate_f32_buffer(MAIN_BUFFER_SIZE).unwrap(),
             hop_counter: 0,
             analyzer: Analyzer::init()
         };
 
-        defmt::trace!("Finished init (free memory: {} / {} kB)", memory::capacity() / 1024, memory::size() / 1024);
+        trace!("Finished init (free memory: {} / {} kB)", memory::capacity() / 1024, memory::size() / 1024);
 
         (shared, local)
     }
@@ -84,12 +86,10 @@ mod app {
             
             if *hop_counter % HOP_INTERVAL == 0 {
                 window_buffer.lock(|window_buffer| {
-                    let end = BUFFER_SIZE - start;
-                    for i in 0..end {
-                        window_buffer[i] = main_buffer[start + i].into();
-                    }
-                    for i in 0..start {
-                        window_buffer[end + i] = main_buffer[i].into();
+                    let end = *hop_counter * BLOCK_LENGTH;
+                    let start = (end + MAIN_BUFFER_SIZE - WINDOW_BUFFER_SIZE) % MAIN_BUFFER_SIZE;
+                    for i in 0..WINDOW_BUFFER_SIZE {
+                        window_buffer[i] = main_buffer[(start + i) % MAIN_BUFFER_SIZE].into();
                     }
                 });
 
@@ -112,6 +112,6 @@ mod app {
             analyzer.process(window_buffer);     
         });
 
-        defmt::debug!("freq = {}, length = {}", analyzer.frequency(), SAMPLE_RATE as f32 / analyzer.frequency());
+        debug!("freq = {}, length = {}", analyzer.frequency(), SAMPLE_RATE as f32 / analyzer.frequency());
     }
 }

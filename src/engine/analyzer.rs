@@ -1,3 +1,4 @@
+use defmt::debug;
 use microfft::{Complex32, complex::cfft_2048};
 use micromath::F32Ext;
 use core::f32::consts::PI;
@@ -16,14 +17,14 @@ pub struct Analyzer {
 impl Analyzer {
     pub fn init() -> Self {
         Analyzer {
-            windowing_func: windowing::build_windowing_func(BUFFER_SIZE),
-            phase_history: memory::allocate_f32_buffer(BUFFER_SIZE).unwrap(),
+            windowing_func: windowing::build_windowing_func(WINDOW_BUFFER_SIZE),
+            phase_history: memory::allocate_f32_buffer(WINDOW_BUFFER_SIZE).unwrap(),
             frequency: 0.0
         }
     }
 
     pub fn process(&mut self, window_buffer: &mut [Complex32]) {
-        for i in 0..BUFFER_SIZE {
+        for i in 0..WINDOW_BUFFER_SIZE {
             // Assume window_buffer[i].im == 0.0;
             window_buffer[i].re *= self.windowing_func[i];
         }
@@ -33,7 +34,7 @@ impl Analyzer {
         let mut max_index = 0;
         let mut max_norm_sq = 0.0;
         let mut max_prev_phase = 0.0;
-        for i in 0..(BUFFER_SIZE / 2) {
+        for i in 0..(WINDOW_BUFFER_SIZE / 2) {
             let Complex32 { re, im} = spectrum[i];
             let norm_sq = re * re + im * im;
             if norm_sq > max_norm_sq {
@@ -45,7 +46,7 @@ impl Analyzer {
         }
 
         let sample_rate = SAMPLE_RATE as f32;
-        let f_est = (max_index as f32 / BUFFER_SIZE as f32) * sample_rate; 
+        let f_est = (max_index as f32 / WINDOW_BUFFER_SIZE as f32) * sample_rate; 
         let dt = 2.0 * PI * ((HOP_INTERVAL * BLOCK_LENGTH) as f32 / sample_rate);
         let dp = self.phase_history[max_index] - max_prev_phase;
         let mut p = 0.0;
