@@ -7,7 +7,7 @@ use prism_firmware as _; // global logger + panicking-behavior + memory layout
 #[rtic::app(
     device = stm32h7xx_hal::pac,
     peripherals = true,
-    dispatchers = [EXTI0]
+    dispatchers = [EXTI0, EXTI1]
 )]
 mod app {
     use defmt::{trace, debug};
@@ -25,16 +25,21 @@ mod app {
     #[local]
     struct Local {
         audio_interface: AudioInterface,
-        main_buffer: &'static mut [f32],
+        input_buffer: &'static mut [f32],
         hop_counter: usize,
-        analyzer: Analyzer
+        analyzer: Analyzer,
+        adc1: Adc1,
+        adc2: Adc2,
+        cv_pins: CVPins
     }
 
     #[init]
     fn init(cx: init::Context) -> (Shared, Local) {
         let System {
             audio_interface,
-            ..
+            adc1,
+            adc2,
+            cv_pins
         } = System::init(cx.core, cx.device);
         
         let shared = Shared {
@@ -43,12 +48,15 @@ mod app {
 
         let local = Local {
             audio_interface,
-            main_buffer: memory::allocate_f32_buffer(MAIN_BUFFER_SIZE).unwrap(),
+            input_buffer: memory::allocate_f32_buffer(INPUT_BUFFER_SIZE).unwrap(),
             hop_counter: 0,
-            analyzer: Analyzer::init()
+            analyzer: Analyzer::init(),
+            adc1,
+            adc2,
+            cv_pins
         };
 
-        trace!("Finished init (free memory: {} / {} kB)", memory::capacity() / 1024, memory::size() / 1024);
+        trace!("Finished init (free memory: {} / {})", memory::capacity(), memory::size());
 
         (shared, local)
     }
@@ -58,7 +66,7 @@ mod app {
         priority = 5,
         local = [
             audio_interface,
-            main_buffer,
+            input_buffer,
             hop_counter
         ],
         shared = [
@@ -68,7 +76,7 @@ mod app {
     fn dsp(cx: dsp::Context) {
         let dsp::LocalResources {
             audio_interface,
-            main_buffer,
+            input_buffer,
             hop_counter, ..
         } = cx.local;
 
@@ -79,7 +87,7 @@ mod app {
         audio_interface.handle_interrupt_dma1_str1(|audio_buffer| {
             let start = *hop_counter * BLOCK_LENGTH;
             for i in 0..BLOCK_LENGTH {
-                main_buffer[start + i] = audio_buffer[i].0;
+                input_buffer[start + i] = audio_buffer[i].0;
             }
 
             *hop_counter = (*hop_counter + 1) % HOP_LIM;
@@ -87,20 +95,23 @@ mod app {
             if *hop_counter % HOP_INTERVAL == 0 {
                 window_buffer.lock(|window_buffer| {
                     let end = *hop_counter * BLOCK_LENGTH;
-                    let start = end.wrapping_sub(WINDOW_BUFFER_SIZE) % MAIN_BUFFER_SIZE;
+                    let start = end.wrapping_sub(WINDOW_BUFFER_SIZE) % INPUT_BUFFER_SIZE;
                     for i in 0..WINDOW_BUFFER_SIZE {
-                        window_buffer[i] = main_buffer[(start + i) % MAIN_BUFFER_SIZE].into();
+                        window_buffer[i] = input_buffer[(start + i) % INPUT_BUFFER_SIZE].into();
                     }
                 });
 
                 analyze::spawn().ok();
+
+                // TODO: Actually handle timing.
+                input::spawn().ok();
             }
         })
         .unwrap();
     }
 
     #[task(
-        priority = 1,
+        priority = 3,
         local = [analyzer],
         shared = [window_buffer]
     )]
@@ -113,5 +124,25 @@ mod app {
         );
 
         debug!("freq = {}, length = {}", frequency, SAMPLE_RATE as f32 / frequency);
+    }
+
+    #[task(
+        priority = 1,
+        local = [
+            adc1,
+            adc2,
+            cv_pins
+        ]
+    )]
+    async fn input(cx: input::Context) {
+        let input::LocalResources {
+            adc1,
+            adc2,
+            cv_pins, ..
+        } = cx.local;
+
+        let samples = cv_pins.sample(adc1, adc2);
+
+        debug!("samples: {}", samples);
     }
 }

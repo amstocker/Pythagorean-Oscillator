@@ -1,22 +1,25 @@
 pub mod memory;
+pub mod cv;
 
+use stm32h7xx_hal::prelude::*;
+use stm32h7xx_hal::delay::Delay;
 use stm32h7xx_hal::pac::CorePeripherals;
 use stm32h7xx_hal::pac::Peripherals as DevicePeripherals;
-use stm32h7xx_hal::gpio::{Input, Output, Pin};
+use stm32h7xx_hal::adc;
 
 pub use rtic_monotonics::systick::prelude::*;
 pub use daisy::audio::Interface as AudioInterface;
 
+pub use crate::system::cv::{CVPins, Adc1, Adc2};
+
 
 systick_monotonic!(Mono, 1_000_000);
 
-pub type Led = Pin<'C', 7, Output>;
-pub type Gate = Pin<'C', 1, Input>;
-
 pub struct System {
     pub audio_interface: AudioInterface,
-    pub gate: Gate,
-    pub led: Led
+    pub adc1: Adc1,
+    pub adc2: Adc2,
+    pub cv_pins: CVPins
 }
 
 impl System {
@@ -32,15 +35,34 @@ impl System {
             .spawn()
             .unwrap();
         
-        let gate = pins.GPIO.PIN_20.into_floating_input();
-        let led = daisy::board_split_leds!(pins).USER;
+        //Mono::start(cp.SYST, 480_000_000);
 
-        Mono::start(cp.SYST, 480_000_000);
+        let mut delay = Delay::new(cp.SYST, ccdr.clocks);
+        
+        let (adc1, adc2) = adc::adc12(
+            dp.ADC1,
+            dp.ADC2,
+            4.MHz(),
+            &mut delay,
+            ccdr.peripheral.ADC12,
+            &ccdr.clocks,
+        );
+
+        let mut adc1 = adc1.enable();
+        adc1.set_resolution(adc::Resolution::SixteenBit);
+        adc1.set_sample_time(adc::AdcSampleTime::T_16);
+
+        let mut adc2 = adc2.enable();
+        adc2.set_resolution(adc::Resolution::SixteenBit);
+        adc2.set_sample_time(adc::AdcSampleTime::T_16);
+
+        let cv_pins = CVPins::init(pins.GPIO);
 
         System {
             audio_interface,
-            gate,
-            led
+            adc1,
+            adc2,
+            cv_pins
         }
     }
 }

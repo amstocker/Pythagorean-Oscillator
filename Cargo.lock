@@ -370,6 +370,7 @@ dependencies = [
  "defmt-rtt",
  "microfft",
  "micromath",
+ "nb 1.1.0",
  "panic-probe",
  "rtic",
  "rtic-monotonics",
