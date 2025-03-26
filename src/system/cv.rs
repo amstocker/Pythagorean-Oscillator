@@ -1,9 +1,10 @@
 use daisy::pins::Gpio;
-use stm32h7xx_hal::gpio::{
-    Analog,
+use stm32h7xx_hal::{gpio::{
     gpioa::{PA3, PA7},
-    gpioc::{PC0, PC4}
-};
+    gpioc::{PC0, PC4},
+    Analog,
+    Pin
+}, hal::adc::Channel};
 use stm32h7xx_hal::adc::{Adc, Enabled};
 use stm32h7xx_hal::pac::{ADC1, ADC2};
 use nb::block;
@@ -22,11 +23,7 @@ pub struct CVPins {
     pub cv1: PC0<Analog>,
     pub cv2: PA3<Analog>,
     pub cv3: PC4<Analog>,
-    pub cv4: PA7<Analog>,
-    cv1_lpf: LowPassFilter,
-    cv2_lpf: LowPassFilter,
-    cv3_lpf: LowPassFilter,
-    cv4_lpf: LowPassFilter
+    pub cv4: PA7<Analog>
 }
 
 #[derive(Default, defmt::Format)]
@@ -43,11 +40,7 @@ impl CVPins {
             cv1: gpio.PIN_15.into_analog(),
             cv2: gpio.PIN_16.into_analog(),
             cv3: gpio.PIN_21.into_analog(),
-            cv4: gpio.PIN_18.into_analog(),
-            cv1_lpf: LowPassFilter::new(CV_LPF_FREQ),
-            cv2_lpf: LowPassFilter::new(CV_LPF_FREQ),
-            cv3_lpf: LowPassFilter::new(CV_LPF_FREQ),
-            cv4_lpf: LowPassFilter::new(CV_LPF_FREQ)
+            cv4: gpio.PIN_18.into_analog()
         }
     }
 
@@ -56,21 +49,17 @@ impl CVPins {
         
         adc1.start_conversion(&mut self.cv1);
         adc2.start_conversion(&mut self.cv2);
-        samples.cv1 = self.cv1_lpf.process(
-            scale(block!(adc1.read_sample()).unwrap_or_default(), adc1.slope())
-        ) / self.cv1_lpf.dc_gain;
-        samples.cv2 = self.cv2_lpf.process(
-            scale(block!(adc2.read_sample()).unwrap_or_default(), adc2.slope())
-        ) / self.cv2_lpf.dc_gain;
+        samples.cv1 = 
+            scale(block!(adc1.read_sample()).unwrap_or_default(), adc1.slope());
+        samples.cv2 =
+            scale(block!(adc2.read_sample()).unwrap_or_default(), adc2.slope());
 
         adc1.start_conversion(&mut self.cv3);
         adc2.start_conversion(&mut self.cv4);
-        samples.cv3 = self.cv3_lpf.process(
-            scale(block!(adc1.read_sample()).unwrap_or_default(), adc1.slope())
-        ) / self.cv3_lpf.dc_gain;
-        samples.cv4 = self.cv4_lpf.process(
-            scale(block!(adc2.read_sample()).unwrap_or_default(), adc2.slope())
-        ) / self.cv4_lpf.dc_gain;
+        samples.cv3 =
+            scale(block!(adc1.read_sample()).unwrap_or_default(), adc1.slope());
+        samples.cv4 =
+            scale(block!(adc2.read_sample()).unwrap_or_default(), adc2.slope());
 
         samples        
     }

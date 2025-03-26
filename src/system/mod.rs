@@ -1,8 +1,8 @@
 pub mod memory;
 pub mod cv;
 
+use stm32h7xx_hal::delay::{Delay, DelayFromCountDownTimer};
 use stm32h7xx_hal::prelude::*;
-use stm32h7xx_hal::delay::Delay;
 use stm32h7xx_hal::pac::CorePeripherals;
 use stm32h7xx_hal::pac::Peripherals as DevicePeripherals;
 use stm32h7xx_hal::adc;
@@ -35,9 +35,15 @@ impl System {
             .spawn()
             .unwrap();
         
-        //Mono::start(cp.SYST, 480_000_000);
+        Mono::start(cp.SYST, 480_000_000);
 
-        let mut delay = Delay::new(cp.SYST, ccdr.clocks);
+        //let mut delay = Delay::new(cp.SYST, ccdr.clocks);
+
+        let mut delay = DelayFromCountDownTimer::new(dp.TIM2.timer(
+            1500.Hz(),
+            ccdr.peripheral.TIM2,
+            &ccdr.clocks,
+        ));
         
         let (adc1, adc2) = adc::adc12(
             dp.ADC1,
