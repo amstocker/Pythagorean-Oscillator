@@ -19,22 +19,25 @@ pub fn hz_to_lpf_decay(freq: f32) -> f32 {
 pub struct LowPassFilter {
     decay: f32,
     value: f32,
-    prev_sample: f32
+    prev_sample: f32,
+    pub dc_gain: f32
 }
 
 impl LowPassFilter {
     pub fn new(freq: f32) -> Self {
+        let decay = hz_to_lpf_decay(freq);
         LowPassFilter {
-            decay: hz_to_lpf_decay(freq),
+            decay,
             value: 0.0,
-            prev_sample: 0.0
+            prev_sample: 0.0,
+            dc_gain: (1.0 + 0.12) / decay
         }
     }
 
     pub fn set_freq(&mut self, freq: f32) {
         self.decay = hz_to_lpf_decay(freq);
     }
-    
+
     pub fn process(&mut self, sample: f32) -> f32 {
         self.value += (sample + 0.12 * self.prev_sample) - self.decay * self.value;
         self.prev_sample = sample;
