@@ -19,24 +19,28 @@ const CV_LPF_FREQ: f32 = 10_000.0;
 pub type Adc1 = Adc<ADC1, Enabled>;
 pub type Adc2 = Adc<ADC2, Enabled>;
 
-pub struct CVPins {
+pub struct Input {
+    adc1: Adc1,
+    adc2: Adc2,
     pub cv1: PC0<Analog>,
     pub cv2: PA3<Analog>,
     pub cv3: PC4<Analog>,
     pub cv4: PA7<Analog>
 }
 
-#[derive(Default, defmt::Format)]
-pub struct CVSample {
+#[derive(Default, Clone, Copy, defmt::Format)]
+pub struct InputSample {
     pub cv1: f32,
     pub cv2: f32,
     pub cv3: f32,
     pub cv4: f32
 }
 
-impl CVPins {
-    pub fn init(gpio: Gpio) -> Self {
-        CVPins {
+impl Input {
+    pub fn init(gpio: Gpio, adc1: Adc1, adc2: Adc2) -> Self {
+        Input {
+            adc1,
+            adc2,
             cv1: gpio.PIN_15.into_analog(),
             cv2: gpio.PIN_16.into_analog(),
             cv3: gpio.PIN_21.into_analog(),
@@ -44,22 +48,22 @@ impl CVPins {
         }
     }
 
-    pub fn sample(&mut self, adc1: &mut Adc1, adc2: &mut Adc2) -> CVSample {
-        let mut samples = CVSample::default();
+    pub fn sample(&mut self) -> InputSample {
+        let mut samples = InputSample::default();
         
-        adc1.start_conversion(&mut self.cv1);
-        adc2.start_conversion(&mut self.cv2);
+        self.adc1.start_conversion(&mut self.cv1);
+        self.adc2.start_conversion(&mut self.cv2);
         samples.cv1 = 
-            scale(block!(adc1.read_sample()).unwrap_or_default(), adc1.slope());
+            scale(block!(self.adc1.read_sample()).unwrap_or_default(), self.adc1.slope());
         samples.cv2 =
-            scale(block!(adc2.read_sample()).unwrap_or_default(), adc2.slope());
+            scale(block!(self.adc2.read_sample()).unwrap_or_default(), self.adc2.slope());
 
-        adc1.start_conversion(&mut self.cv3);
-        adc2.start_conversion(&mut self.cv4);
+        self.adc1.start_conversion(&mut self.cv3);
+        self.adc2.start_conversion(&mut self.cv4);
         samples.cv3 =
-            scale(block!(adc1.read_sample()).unwrap_or_default(), adc1.slope());
+            scale(block!(self.adc1.read_sample()).unwrap_or_default(), self.adc1.slope());
         samples.cv4 =
-            scale(block!(adc2.read_sample()).unwrap_or_default(), adc2.slope());
+            scale(block!(self.adc2.read_sample()).unwrap_or_default(), self.adc2.slope());
 
         samples        
     }

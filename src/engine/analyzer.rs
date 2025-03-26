@@ -8,6 +8,7 @@ use crate::dsp::windowing;
 
 
 pub struct Analyzer {
+    window: &'static mut [Complex32],
     windowing_func: &'static [f32],
     phase_history: &'static mut [f32]
 }
@@ -15,6 +16,8 @@ pub struct Analyzer {
 impl Analyzer {
     pub fn init() -> Self {
         Analyzer {
+            window:
+                memory::allocate_complex32_buffer(WINDOW_BUFFER_SIZE).unwrap(),
             windowing_func:
                 windowing::build_windowing_func(WINDOW_BUFFER_SIZE),
             phase_history:
@@ -23,7 +26,7 @@ impl Analyzer {
         }
     }
 
-    pub fn process(&mut self, window_buffer: &mut [Complex32]) -> f32 {
+    pub fn process(&mut self, input_buffer: &mut [f32]) -> f32 {
         // We analyze the frequency using a phase vocoder.
         //   (See: https://sethares.engr.wisc.edu/vocoders/phasevocoder.html)
         // 
@@ -34,14 +37,16 @@ impl Analyzer {
         //  4. Use the difference in phase at the peak magnitude to get
         //     a much more accurate estimate for the frequency.
 
-        // Step 1
+        // Step 1: Copy window to internal buffer with windowing function.
         for i in 0..WINDOW_BUFFER_SIZE {
-            // Assume window_buffer[i].im == 0.0;
-            window_buffer[i].re *= self.windowing_func[i];
+            self.window[i] = Complex32 {
+                re: input_buffer[i] * self.windowing_func[i],
+                im: 0.0
+            };
         }
 
         // Step 2
-        let samples = window_buffer.try_into().unwrap();
+        let samples = self.window.try_into().unwrap();
         let spectrum = cfft_2048(samples);
 
         // Step 3 (TODO: parabolic interpolation of max)
@@ -83,5 +88,6 @@ impl Analyzer {
             freq_prev = freq;
             phase += 2.0 * PI;
         }
+
     }
 }

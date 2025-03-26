@@ -10,16 +10,14 @@ use stm32h7xx_hal::adc;
 pub use rtic_monotonics::systick::prelude::*;
 pub use daisy::audio::Interface as AudioInterface;
 
-pub use crate::system::cv::{CVPins, Adc1, Adc2};
+pub use crate::system::cv::{Input, InputSample};
 
 
 systick_monotonic!(Mono, 1_000_000);
 
 pub struct System {
     pub audio_interface: AudioInterface,
-    pub adc1: Adc1,
-    pub adc2: Adc2,
-    pub cv_pins: CVPins
+    pub input: Input
 }
 
 impl System {
@@ -35,6 +33,7 @@ impl System {
             .spawn()
             .unwrap();
         
+
         Mono::start(cp.SYST, 480_000_000);
 
         //let mut delay = Delay::new(cp.SYST, ccdr.clocks);
@@ -62,13 +61,11 @@ impl System {
         adc2.set_resolution(adc::Resolution::SixteenBit);
         adc2.set_sample_time(adc::AdcSampleTime::T_16);
 
-        let cv_pins = CVPins::init(pins.GPIO);
+        let input = Input::init(pins.GPIO, adc1, adc2);
 
         System {
             audio_interface,
-            adc1,
-            adc2,
-            cv_pins
+            input
         }
     }
 }
