@@ -13,7 +13,7 @@ mod app {
     
     use prism_firmware::consts::{INPUT_BUFFER_SIZE, *};
     use prism_firmware::system::*;
-    use prism_firmware::engine::{Analyzer, Prism};
+    use prism_firmware::engine::Analyzer;
 
 
     type Buffer = &'static mut [f32];
@@ -27,7 +27,6 @@ mod app {
         audio_input_buffer: [f32; INPUT_BUFFER_SIZE + WINDOW_BUFFER_SIZE],
         audio_input_index: usize,
         analyzer: Analyzer,
-        prism: Prism,
         input: Input,
         input_tx: SignalWriter<'static, InputSample>,
         input_rx: SignalReader<'static, InputSample>,
@@ -52,7 +51,6 @@ mod app {
             audio_input_buffer: [0.0; INPUT_BUFFER_SIZE + WINDOW_BUFFER_SIZE],
             audio_input_index: WINDOW_BUFFER_SIZE,
             analyzer: Analyzer::init(),
-            prism: Prism::init(),
             input,
             input_tx,
             input_rx,
@@ -65,7 +63,7 @@ mod app {
         input::spawn(100.Hz()).unwrap();
         analyze::spawn().unwrap();
 
-        defmt::trace!("Finished init (free memory: {} / {})", memory::capacity(), memory::size());
+        defmt::trace!("Finished init");
         (Shared {}, local)
     }
 
@@ -77,7 +75,6 @@ mod app {
             audio_interface,
             audio_input_buffer,
             audio_input_index,
-            prism,
             input_rx,
             recent_input_sample,
             window_tx,
@@ -89,7 +86,6 @@ mod app {
             audio_interface,
             audio_input_buffer,
             audio_input_index,
-            prism,
             input_rx,
             recent_input_sample,
             window_tx,
@@ -152,6 +148,7 @@ mod app {
 
         while let Ok(window) = window_rx.recv().await {
             let frequency = analyzer.process(window);
+            defmt::debug!("freq = {}", frequency);
         }
     }
 

@@ -3,27 +3,27 @@ use micromath::F32Ext;
 use core::f32::consts::PI;
 
 use crate::consts::*;
-use crate::dsp::windowing::build_windowing_func;
+use crate::dsp::window::build_window;
 
 
 pub struct Analyzer {
-    window: [Complex32; WINDOW_BUFFER_SIZE],
-    windowing_func: [f32; WINDOW_BUFFER_SIZE],
+    buffer: [Complex32; WINDOW_BUFFER_SIZE],
+    window: [f32; WINDOW_BUFFER_SIZE],
     phase_history: [f32; WINDOW_BUFFER_SIZE / 2]
 }
 
 impl Analyzer {
     pub fn init() -> Self {
         let mut analyzer = Analyzer {
-            window:
+            buffer:
                 [Complex32::default(); WINDOW_BUFFER_SIZE],
-            windowing_func:
+            window:
                 [0.0; WINDOW_BUFFER_SIZE],
             phase_history:
                 // Only store information about frequencies under Nyquist.
                 [0.0; WINDOW_BUFFER_SIZE / 2]
         };
-        build_windowing_func(&mut analyzer.windowing_func);
+        build_window(&mut analyzer.window);
         analyzer
     }
 
@@ -40,14 +40,14 @@ impl Analyzer {
 
         // Step 1: Copy window to internal buffer with windowing function.
         for i in 0..WINDOW_BUFFER_SIZE {
-            self.window[i] = Complex32 {
-                re: input_buffer[i] * self.windowing_func[i],
+            self.buffer[i] = Complex32 {
+                re: input_buffer[i] * self.window[i],
                 im: 0.0
             };
         }
 
         // Step 2
-        let spectrum = cfft_1024(&mut self.window);
+        let spectrum = cfft_1024(&mut self.buffer);
 
         // Step 3 (TODO: parabolic interpolation of max)
         let mut max_index = 0;

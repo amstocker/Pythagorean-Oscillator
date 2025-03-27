@@ -1,2 +1,2 @@
 pub mod lpf;
-pub mod windowing;
+pub mod window;
