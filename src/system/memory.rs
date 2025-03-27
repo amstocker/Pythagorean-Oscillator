@@ -43,9 +43,9 @@ pub fn allocate_complex32_buffer(len: usize) -> Option<&'static mut [Complex32]>
 }
 
 pub fn size() -> usize {
-    MEMORY_SIZE
+    MEMORY_SIZE * core::mem::size_of::<f32>()
 }
 
 pub fn capacity() -> usize {
-    unsafe { MEMORY_SIZE - INDEX }
+    unsafe { (MEMORY_SIZE - INDEX) * core::mem::size_of::<f32>() }
 }

@@ -22,6 +22,8 @@ pub struct System {
 
 impl System {
     pub fn init(mut cp: CorePeripherals, dp: DevicePeripherals) -> Self {
+        Mono::start(cp.SYST, 480_000_000);
+        
         cp.SCB.enable_icache();
         cp.SCB.enable_dcache(&mut cp.CPUID);
 
@@ -32,12 +34,8 @@ impl System {
         let audio_interface = daisy::board_split_audio!(ccdr, pins)
             .spawn()
             .unwrap();
-        
-
-        Mono::start(cp.SYST, 480_000_000);
 
         //let mut delay = Delay::new(cp.SYST, ccdr.clocks);
-
         let mut delay = DelayFromCountDownTimer::new(dp.TIM2.timer(
             1500.Hz(),
             ccdr.peripheral.TIM2,

@@ -15,7 +15,7 @@ rtic-sync = "1.3.2"
 defmt = "0.3"
 defmt-rtt = "0.4"
 micromath = "2.1"
-microfft = { version = "0.6", default-features = false, features = [ "size-2048" ] }
+microfft = { version = "0.6", default-features = false, features = [ "size-1024" ] }
 nb = "1.1"
 fugit = { version = "0.3.7", features = [ "defmt" ] }
 

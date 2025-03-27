@@ -1,29 +1,30 @@
-use microfft::{Complex32, complex::cfft_2048};
+use microfft::{Complex32, complex::cfft_1024};
 use micromath::F32Ext;
 use core::f32::consts::PI;
 
 use crate::consts::*;
-use crate::system::memory;
-use crate::dsp::windowing;
+use crate::dsp::windowing::build_windowing_func;
 
 
 pub struct Analyzer {
-    window: &'static mut [Complex32],
-    windowing_func: &'static [f32],
-    phase_history: &'static mut [f32]
+    window: [Complex32; WINDOW_BUFFER_SIZE],
+    windowing_func: [f32; WINDOW_BUFFER_SIZE],
+    phase_history: [f32; WINDOW_BUFFER_SIZE / 2]
 }
 
 impl Analyzer {
     pub fn init() -> Self {
-        Analyzer {
+        let mut analyzer = Analyzer {
             window:
-                memory::allocate_complex32_buffer(WINDOW_BUFFER_SIZE).unwrap(),
+                [Complex32::default(); WINDOW_BUFFER_SIZE],
             windowing_func:
-                windowing::build_windowing_func(WINDOW_BUFFER_SIZE),
+                [0.0; WINDOW_BUFFER_SIZE],
             phase_history:
                 // Only store information about frequencies under Nyquist.
-                memory::allocate_f32_buffer(WINDOW_BUFFER_SIZE / 2).unwrap()
-        }
+                [0.0; WINDOW_BUFFER_SIZE / 2]
+        };
+        build_windowing_func(&mut analyzer.windowing_func);
+        analyzer
     }
 
     pub fn process(&mut self, input_buffer: &mut [f32]) -> f32 {
@@ -46,8 +47,7 @@ impl Analyzer {
         }
 
         // Step 2
-        let samples = self.window.try_into().unwrap();
-        let spectrum = cfft_2048(samples);
+        let spectrum = cfft_1024(&mut self.window);
 
         // Step 3 (TODO: parabolic interpolation of max)
         let mut max_index = 0;
@@ -72,7 +72,7 @@ impl Analyzer {
         //   so we find the multiple that is closest to the estimated frequency.
         let sample_rate = SAMPLE_RATE as f32;
         let freq_est = ((max_index as f32 + 0.5) / WINDOW_BUFFER_SIZE as f32) * sample_rate; 
-        let dt = 2.0 * PI * ((HOP_INTERVAL * BLOCK_LENGTH) as f32 / sample_rate);
+        let dt = 2.0 * PI * (WINDOW_HOP as f32 / sample_rate);
         let dp = self.phase_history[max_index] - max_prev_phase;
         let mut phase = 0.0;
         let mut freq_prev = 0.0;
@@ -88,6 +88,5 @@ impl Analyzer {
             freq_prev = freq;
             phase += 2.0 * PI;
         }
-
     }
 }
